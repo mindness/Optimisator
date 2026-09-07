@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "asOf": "2026-09-07",
+    "source": "Cached from sourced-rates.draft.json + tax-lawyer-fr review. No OpenLegi at runtime."
+  },
+  "notes": {
+    "mere-fille-art-145": {
+      "id": "mere-fille-art-145",
+      "title": "Régime mère-fille",
+      "summary": "Exonération de 95 % des dividendes reçus sous conditions de détention (≥ 5 %, conservation 2 ans). Quote-part de frais et charges (QPFC) de 5 % réintégrée au résultat de la mère (Art. 216 CGI).",
+      "articles": [
+        {
+          "ref": "Art. 145 CGI",
+          "label": "Conditions du régime des sociétés mères",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051203497",
+          "status": "verified",
+          "asOf": "2026-09-07",
+          "summary": "Titres représentant au moins 5 % du capital (appréciation à la date de mise en paiement). Conservation 2 ans ou engagement."
+        },
+        {
+          "ref": "Art. 216 CGI",
+          "label": "Quote-part de frais et charges",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048831340",
+          "status": "verified",
+          "asOf": "2026-09-07",
+          "summary": "QPFC réintégrée = 5 % du produit total des participations. Frottement IS effectif ≈ 1,25 % si taux holding 25 %."
+        }
+      ],
+      "alerts": []
+    },
+    "cca-debiteur": {
+      "id": "cca-debiteur",
+      "title": "CCA débiteur (personne physique)",
+      "summary": "Interdiction pour les dirigeants personnes physiques de se faire consentir un découvert en compte courant d'associé auprès de la société.",
+      "articles": [
+        {
+          "ref": "C. com. art. L. 225-43",
+          "label": "Emprunts et CCA des administrateurs",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000020465599",
+          "status": "verified",
+          "asOf": "2026-09-07",
+          "summary": "Interdiction, à peine de nullité, de contracter des emprunts auprès de la société ou de se faire consentir un découvert en compte courant."
+        },
+        {
+          "ref": "C. com. art. L. 227-12",
+          "label": "Extension SAS / SASU",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006227093",
+          "status": "verified",
+          "asOf": "2026-09-07",
+          "summary": "La même interdiction s'applique au président et aux dirigeants de SAS/SASU."
+        }
+      ],
+      "alerts": [
+        {
+          "code": "cca_debiteur",
+          "label": "CCA débiteur",
+          "severity": "danger",
+          "detail": "Compte courant débiteur au profit d'une personne physique — interdit (soft block pédagogique)."
+        }
+      ]
+    },
+    "acte-anormal-gestion": {
+      "id": "acte-anormal-gestion",
+      "title": "Acte anormal de gestion",
+      "summary": "Les management fees et loyers intra-groupe doivent reposer sur une réalité économique et une valeur de marché. Un forfait sans convention ou un loyer hors marché expose à une remise en cause fiscale.",
+      "articles": [
+        {
+          "ref": "Doctrine — acte anormal de gestion",
+          "label": "Principe jurisprudentiel / BOFiP",
+          "url": null,
+          "status": "assumed",
+          "asOf": "2026-09-07",
+          "summary": "Charge déductible seulement si engagée dans l'intérêt de l'entreprise, à un prix normal, avec substance réelle (convention, prestations)."
+        }
+      ],
+      "alerts": [
+        {
+          "code": "acte_anormal_gestion",
+          "label": "Acte anormal de gestion",
+          "severity": "warning",
+          "detail": "Vérifier substance, convention écrite et prix de marché (management fees / loyer SCI)."
+        }
+      ]
+    },
+    "pfu-dividendes": {
+      "id": "pfu-dividendes",
+      "title": "Prélèvement forfaitaire unique (PFU)",
+      "summary": "Dividendes versés à une personne physique : IR forfaitaire 12,8 % + prélèvements sociaux (package modèle 2026).",
+      "articles": [
+        {
+          "ref": "Art. 200 A CGI",
+          "label": "PFU — taux IR 12,8 %",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053546896",
+          "status": "verified",
+          "asOf": "2026-09-07",
+          "summary": "Taux forfaitaire IR sur revenus de capitaux mobiliers, sauf option globale pour le barème."
+        }
+      ],
+      "alerts": []
+    }
+  }
+}

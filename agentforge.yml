@@ -1,0 +1,14 @@
+version: 1
+domains: []
+stack: []
+excludeDomains: []
+pullBudget:
+  maxSkillsPerTask: 3
+  maxMcpSuggestions: 5
+  maxApiSuggestions: 5
+  maxTopicSuggestions: 5
+registries:
+  skills: default
+  mcp: awesome-mcp-servers
+  apis: public-apis
+  topics: sindresorhus-awesome

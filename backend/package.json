@@ -1,0 +1,26 @@
+{
+  "name": "simulateur-flux-api",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate:local": "wrangler d1 migrations apply simulateur-flux --local",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "hono": "4.13.7",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260907.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "13.0.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0",
+    "wrangler": "4.129.1"
+  }
+}

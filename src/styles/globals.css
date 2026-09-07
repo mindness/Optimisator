@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Manual theme toggle via class on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Semantic surfaces & flow roles (switch with .dark) ─── */
+:root {
+  color-scheme: light;
+  --canvas: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --focus-ring: #0891b2;
+
+  --flow-cash: #059669;
+  --flow-vat: #0891b2;
+  --flow-is: #d97706;
+  --flow-social: #4f46e5;
+  --flow-div: #ca8a04;
+  --flow-alert: #e11d48;
+
+  --disclaimer-bg: #fff7ed;
+  --disclaimer-border: #fdba74;
+  --disclaimer-fg: #9a3412;
+}
+
+.dark {
+  color-scheme: dark;
+  --canvas: #0b0f17;
+  --surface: #111827;
+  --border: #1f2937;
+  --border-strong: #374151;
+  --fg: #f8fafc;
+  --fg-muted: #94a3b8;
+  --focus-ring: #06b6d4;
+
+  --flow-cash: #10b981;
+  --flow-vat: #06b6d4;
+  --flow-is: #f59e0b;
+  --flow-social: #6366f1;
+  --flow-div: #eab308;
+  --flow-alert: #f43f5e;
+
+  --disclaimer-bg: #1c1917;
+  --disclaimer-border: #78350f;
+  --disclaimer-fg: #fdba74;
+}
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-focus-ring: var(--focus-ring);
+
+  --color-flow-cash: var(--flow-cash);
+  --color-flow-vat: var(--flow-vat);
+  --color-flow-is: var(--flow-is);
+  --color-flow-social: var(--flow-social);
+  --color-flow-div: var(--flow-div);
+  --color-flow-alert: var(--flow-alert);
+
+  --color-disclaimer-bg: var(--disclaimer-bg);
+  --color-disclaimer-border: var(--disclaimer-border);
+  --color-disclaimer-fg: var(--disclaimer-fg);
+}
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply m-0 min-h-dvh bg-canvas font-sans text-fg;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--flow-vat) 35%, transparent);
+    color: var(--fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Monetary figures — always tabular */
+.font-amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* React Flow canvas chrome */
+.flow-canvas .react-flow__controls {
+  border: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.flow-canvas .react-flow__controls-button {
+  background: var(--surface);
+  border-bottom-color: var(--border);
+  fill: var(--fg);
+}
+
+.flow-canvas .react-flow__controls-button:hover {
+  background: color-mix(in srgb, var(--flow-vat) 12%, var(--surface));
+}
+
+.flow-canvas .react-flow__minimap {
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-edge-particle {
+    display: none;
+  }
+}

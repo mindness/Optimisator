@@ -1,0 +1,17 @@
+# Local API Worker — do not deploy from this task (no CF account required for tests).
+# Run locally:
+#   cd backend
+#   npm run db:migrate:local
+#   npm run dev
+# API listens on http://127.0.0.1:8787
+
+name = "simulateur-flux-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-07"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "simulateur-flux"
+# Placeholder UUID for local Miniflare D1; replace after `wrangler d1 create`.
+database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "migrations"

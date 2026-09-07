@@ -1,0 +1,313 @@
+{
+  "version": 2,
+  "teamId": "simulateur-flux",
+  "specId": "simulateur-flux",
+  "goal": "simulateur visuel flux financier SASU Holding SCI mere-fille fiscalite France",
+  "domains": [
+    "fiscalite",
+    "finance",
+    "frontend",
+    "product"
+  ],
+  "composedAt": "2026-09-07T16:29:12.445Z",
+  "entries": [
+    {
+      "id": "orchestration-patterns",
+      "name": "Orchestration Patterns",
+      "type": "rule",
+      "domain": "meta",
+      "lane": "orchestrate",
+      "role": "orchestrates workflow; delegates to lanes below",
+      "reason": "Matched goal/domains (score 12.021): Decides how to split work across agents and when not to. Use when coordinating subagents or designing a multi-step workflow: delegation patterns, parallelism, a",
+      "score": 12.021,
+      "reportsTo": null
+    },
+    {
+      "id": "git-workflow-and-versioning",
+      "name": "Git Workflow and Versioning",
+      "type": "skill",
+      "domain": "dev",
+      "lane": "build",
+      "role": "implementation craft during build",
+      "reason": "Matched goal/domains (score 2.095): Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, opening or reviewing a pull request (PR",
+      "score": 2.095,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "tax-lawyer-fr",
+      "name": "Avocat Fiscaliste & Juriste Sociétés (France)",
+      "type": "agent",
+      "domain": "fiscalite",
+      "lane": "domain",
+      "role": "domain persona / specialist judgment",
+      "reason": "Matched goal/domains (score 20.541): Expert juridique et fiscal français pour les montages d'entreprises (SASU, Holding, SCI, conventions de trésorerie, mère-fille) avec sourçage CGI/BOFiP.",
+      "score": 20.541,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "testing-patterns",
+      "name": "Testing Patterns Reference",
+      "type": "rule",
+      "domain": "dev",
+      "lane": "review",
+      "role": "gate / checklist before ship",
+      "reason": "Matched goal/domains (score 2.473): Shows how to write the test once you know you need one. Use as a reference while writing JavaScript or TypeScript tests: arrange-act-assert structure, naming, a",
+      "score": 2.473,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "finance-expert",
+      "name": "Finance Expert",
+      "type": "agent",
+      "domain": "finance",
+      "lane": "domain",
+      "role": "domain persona / specialist judgment",
+      "reason": "Matched goal/domains (score 5.105): Answers finance questions with sourced figures rather than plausible ones. Use when a task involves financial modelling, valuation, unit economics, accounting t",
+      "score": 5.105,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "frontend-ui-engineering",
+      "name": "Frontend UI Engineering",
+      "type": "skill",
+      "domain": "frontend",
+      "lane": "build",
+      "role": "implementation craft during build",
+      "reason": "Matched goal/domains (score 1.669): Builds production-quality, accessible, responsive user-facing UIs. Use when building or modifying interfaces and pages, creating components, implementing layout",
+      "score": 1.669,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "web-performance-auditor",
+      "name": "Web Performance Auditor",
+      "type": "agent",
+      "domain": "frontend",
+      "lane": "review",
+      "role": "review / critique before merge",
+      "reason": "Matched goal/domains (score 1.435): Web performance engineer focused on Core Web Vitals, loading, rendering, and network optimization. Use for performance-focused audits, CWV analysis, and identif",
+      "score": 1.435,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "constraint-driven-development",
+      "name": "Constraint-Driven Development",
+      "type": "skill",
+      "domain": "product",
+      "lane": "design",
+      "role": "shapes the spec and planning process",
+      "reason": "Matched goal/domains (score 1.328): Establishes a project's quality bar as a written contract and stops agents quietly lowering it. Interviews the user on which dimensions matter, supplies sane de",
+      "score": 1.328,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "idea-refine",
+      "name": "Idea Refinement",
+      "type": "skill",
+      "domain": "product",
+      "lane": "design",
+      "role": "shapes the spec and planning process",
+      "reason": "Matched goal/domains (score 1.315): Refines raw ideas into sharp, actionable concepts through structured divergent and convergent thinking. Use when an idea is still vague, when you need to stress",
+      "score": 1.315,
+      "reportsTo": "orchestration-patterns"
+    },
+    {
+      "id": "planning-and-task-breakdown",
+      "name": "Planning and Task Breakdown",
+      "type": "skill",
+      "domain": "product",
+      "lane": "design",
+      "role": "shapes the spec and planning process",
+      "reason": "Matched goal/domains (score 1.231): Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large ",
+      "score": 1.231,
+      "reportsTo": "orchestration-patterns"
+    }
+  ],
+  "byType": {
+    "agents": [
+      {
+        "id": "tax-lawyer-fr",
+        "name": "Avocat Fiscaliste & Juriste Sociétés (France)",
+        "type": "agent",
+        "domain": "fiscalite",
+        "lane": "domain",
+        "role": "domain persona / specialist judgment",
+        "reason": "Matched goal/domains (score 20.541): Expert juridique et fiscal français pour les montages d'entreprises (SASU, Holding, SCI, conventions de trésorerie, mère-fille) avec sourçage CGI/BOFiP.",
+        "score": 20.541,
+        "reportsTo": "orchestration-patterns"
+      },
+      {
+        "id": "finance-expert",
+        "name": "Finance Expert",
+        "type": "agent",
+        "domain": "finance",
+        "lane": "domain",
+        "role": "domain persona / specialist judgment",
+        "reason": "Matched goal/domains (score 5.105): Answers finance questions with sourced figures rather than plausible ones. Use when a task involves financial modelling, valuation, unit economics, accounting t",
+        "score": 5.105,
+        "reportsTo": "orchestration-patterns"
+      },
+      {
+        "id": "web-performance-auditor",
+        "name": "Web Performance Auditor",
+        "type": "agent",
+        "domain": "frontend",
+        "lane": "review",
+        "role": "review / critique before merge",
+        "reason": "Matched goal/domains (score 1.435): Web performance engineer focused on Core Web Vitals, loading, rendering, and network optimization. Use for performance-focused audits, CWV analysis, and identif",
+        "score": 1.435,
+        "reportsTo": "orchestration-patterns"
+      }
+    ],
+    "skills": [
+      {
+        "id": "git-workflow-and-versioning",
+        "name": "Git Workflow and Versioning",
+        "type": "skill",
+        "domain": "dev",
+        "lane": "build",
+        "role": "implementation craft during build",
+        "reason": "Matched goal/domains (score 2.095): Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, opening or reviewing a pull request (PR",
+        "score": 2.095,
+        "reportsTo": "orchestration-patterns"
+      },
+      {
+        "id": "frontend-ui-engineering",
+        "name": "Frontend UI Engineering",
+        "type": "skill",
+        "domain": "frontend",
+        "lane": "build",
+        "role": "implementation craft during build",
+        "reason": "Matched goal/domains (score 1.669): Builds production-quality, accessible, responsive user-facing UIs. Use when building or modifying interfaces and pages, creating components, implementing layout",
+        "score": 1.669,
+        "reportsTo": "orchestration-patterns"
+      },
+      {
+        "id": "constraint-driven-development",
+        "name": "Constraint-Driven Development",
+        "type": "skill",
+        "domain": "product",
+        "lane": "design",
+        "role": "shapes the spec and planning process",
+        "reason": "Matched goal/domains (score 1.328): Establishes a project's quality bar as a written contract and stops agents quietly lowering it. Interviews the user on which dimensions matter, supplies sane de",
+        "score": 1.328,
+        "reportsTo": "orchestration-patterns"
+      },
+      {
+        "id": "idea-refine",
+        "name": "Idea Refinement",
+        "type": "skill",
+        "domain": "product",
+        "lane": "design",
+        "role": "shapes the spec and planning process",
+        "reason": "Matched goal/domains (score 1.315): Refines raw ideas into sharp, actionable concepts through structured divergent and convergent thinking. Use when an idea is still vague, when you need to stress",
+        "score": 1.315,
+        "reportsTo": "orchestration-patterns"
+      },
+      {
+        "id": "planning-and-task-breakdown",
+        "name": "Planning and Task Breakdown",
+        "type": "skill",
+        "domain": "product",
+        "lane": "design",
+        "role": "shapes the spec and planning process",
+        "reason": "Matched goal/domains (score 1.231): Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large ",
+        "score": 1.231,
+        "reportsTo": "orchestration-patterns"
+      }
+    ],
+    "rules": [
+      {
+        "id": "orchestration-patterns",
+        "name": "Orchestration Patterns",
+        "type": "rule",
+        "domain": "meta",
+        "lane": "orchestrate",
+        "role": "orchestrates workflow; delegates to lanes below",
+        "reason": "Matched goal/domains (score 12.021): Decides how to split work across agents and when not to. Use when coordinating subagents or designing a multi-step workflow: delegation patterns, parallelism, a",
+        "score": 12.021,
+        "reportsTo": null
+      },
+      {
+        "id": "testing-patterns",
+        "name": "Testing Patterns Reference",
+        "type": "rule",
+        "domain": "dev",
+        "lane": "review",
+        "role": "gate / checklist before ship",
+        "reason": "Matched goal/domains (score 2.473): Shows how to write the test once you know you need one. Use as a reference while writing JavaScript or TypeScript tests: arrange-act-assert structure, naming, a",
+        "score": 2.473,
+        "reportsTo": "orchestration-patterns"
+      }
+    ]
+  },
+  "org": [
+    {
+      "lane": "orchestrate",
+      "label": "Orchestrator — plans & delegates",
+      "entryIds": [
+        "orchestration-patterns"
+      ]
+    },
+    {
+      "lane": "design",
+      "label": "Design / Spec — process guidance",
+      "entryIds": [
+        "constraint-driven-development",
+        "idea-refine",
+        "planning-and-task-breakdown"
+      ]
+    },
+    {
+      "lane": "domain",
+      "label": "Domain specialists — personas",
+      "entryIds": [
+        "tax-lawyer-fr",
+        "finance-expert"
+      ]
+    },
+    {
+      "lane": "build",
+      "label": "Build — implementation craft",
+      "entryIds": [
+        "git-workflow-and-versioning",
+        "frontend-ui-engineering"
+      ]
+    },
+    {
+      "lane": "review",
+      "label": "Review / Gates — checklists & critics",
+      "entryIds": [
+        "testing-patterns",
+        "web-performance-auditor"
+      ]
+    }
+  ],
+  "suggested_mcp_servers": [
+    {
+      "name": "datagouv",
+      "purpose": "Accès aux référentiels officiels français data.gouv.fr, INSEE et registres d'entreprises",
+      "fromEntryId": "tax-lawyer-fr"
+    },
+    {
+      "name": "openlegi-legifrance",
+      "purpose": "Légifrance via OpenLegi MCP — codes juridiques français (CGI, Code de commerce).",
+      "fromEntryId": "tax-lawyer-fr"
+    },
+    {
+      "name": "openlegi-bofip",
+      "purpose": "BOFiP via OpenLegi MCP — doctrine administrative et fiscale officielle.",
+      "fromEntryId": "tax-lawyer-fr"
+    },
+    {
+      "name": "data-gouv-fr",
+      "purpose": "Official French open-data MCP server (mcp.data.gouv.fr) — search and analyse 50k+ public datasets: INSEE series, company registries, public finance, sector statistics.",
+      "fromEntryId": "finance-expert"
+    },
+    {
+      "name": "recherche-entreprises",
+      "purpose": "French company lookup (SIREN/SIRET, legal form, headcount bracket, filed accounts) for due diligence and competitor sizing.",
+      "fromEntryId": "finance-expert"
+    }
+  ],
+  "path": "C:\\Users\\Mindness\\Optimisator\\.agentforge\\team\\simulateur-flux.json"
+}
