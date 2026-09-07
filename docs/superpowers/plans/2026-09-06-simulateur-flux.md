@@ -17,7 +17,7 @@
 | **Périmètre actuel** | **MVP perso local** (pas prod / SaaS public) |
 | **Implémentation T1–T11** | **Done** (code + tests) |
 | **Tests** | Front **76** · Backend **6** · `tsc -b` OK |
-| **Git commits par tâche** | **Non faits** (politique : commit seulement sur demande explicite) |
+| **Git commits par tâche** | Remplacé par **1 commit agrégé** `87dfd5e` (init repo + MVP) |
 | **Deploy Cloudflare** | Non — API locale / Miniflare uniquement |
 | **Freeze fiscal** | PFU PS / total **verified** 18,6 % / 31,4 % (OpenLegi 2026-09-07) |
 
