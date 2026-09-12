@@ -47,6 +47,29 @@ afterEach(() => {
 });
 
 describe('App assembly', () => {
+  it.each(['Kbis', 'Liasse', 'Ticket'])('returns from the %s preview without losing inputs', () => {
+    render(<App />);
+    fireEvent.change(screen.getByRole('slider', { name: 'CA HT' }), { target: { value: '150000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kbis' }));
+    expect(screen.getByText(/Maquette visuelle avec données fictives/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Simulation', exact: true }));
+    expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'CA HT' })).toHaveValue('150000');
+  });
+
+  it('initializes the salary slider with net cash and exposes an independent holding distribution', () => {
+    render(<App />);
+    expect(screen.getByRole('slider', { name: 'Salaire net avant IR' })).toHaveValue('36000');
+    expect(screen.queryByRole('slider', { name: 'Dividendes holding → personne' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('preset-select'), { target: { value: SASU_HOLDING_PRESET.id } });
+    expect(screen.getByRole('slider', { name: 'Dividendes SASU' })).toHaveValue('50000');
+    const holding = screen.getByRole('slider', { name: 'Dividendes holding → personne' });
+    expect(holding).toHaveValue('0');
+    fireEvent.change(holding, { target: { value: '20000' } });
+    expect(holding).toHaveValue('20000');
+    expect(screen.getByRole('slider', { name: 'Dividendes SASU' })).toHaveValue('50000');
+  });
+
   it('renders shell controls: preset, timeline, what-if, layers, share', () => {
     render(<App />);
 

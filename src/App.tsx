@@ -4,6 +4,7 @@ import { FlowCanvas } from '@/components/canvas/FlowCanvas';
 import { DisclaimerBanner } from '@/components/common/DisclaimerBanner';
 import { MetricBadge } from '@/components/common/MetricBadge';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { FlowInspector } from '@/components/inspector/FlowInspector';
 import {
   LayerSwitcher,
   MoneyTracer,
@@ -163,9 +164,30 @@ export default function App() {
         />
       )}
 
-      {previewId === 'kbis' && <KbisPreview />}
-      {previewId === 'liasse' && <LiassePreview />}
-      {previewId === 'ticket' && <TicketPreview />}
+      <nav className="flex shrink-0 gap-2 border-b border-border bg-surface p-2" aria-label="Vues du simulateur">
+        {([
+          [null, 'Simulation'],
+          ['kbis', 'Kbis'],
+          ['liasse', 'Liasse'],
+          ['ticket', 'Ticket'],
+        ] as const).map(([id, label]) => (
+          <button key={label} type="button" onClick={() => setPreviewId(id)}
+            aria-pressed={previewId === id}
+            className="min-h-11 border border-border bg-canvas px-3 text-sm text-fg hover:border-border-strong">
+            {label}
+          </button>
+        ))}
+      </nav>
+      {previewId && (
+        <div className="min-h-0 flex-1 overflow-auto">
+          <p className="m-0 border-b border-border bg-surface p-3 text-sm text-fg-muted">
+            Maquette visuelle avec données fictives — aucun document officiel ni résultat de simulation.
+          </p>
+          {previewId === 'kbis' && <KbisPreview />}
+          {previewId === 'liasse' && <LiassePreview />}
+          {previewId === 'ticket' && <TicketPreview />}
+        </div>
+      )}
 
       {!previewId && (
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -177,6 +199,9 @@ export default function App() {
           <WhatIfSliders
             values={simulation.whatIf}
             defaults={whatIfDefaults}
+            hasHolding={simulation.scenario.entities.some((entity) =>
+              entity.entityType === 'holding_sas' || entity.entityType === 'holding_sarl',
+            )}
             onChange={simulation.setWhatIf}
             onReset={simulation.resetWhatIf}
           />
@@ -186,15 +211,20 @@ export default function App() {
             onClear={simulation.clearMoneyTrace}
             defaultAmount={simulation.resolved.summary.caHt || 10_000}
           />
+          <details className="border-t border-border pt-3 text-sm text-fg-muted">
+            <summary className="min-h-11 cursor-pointer text-fg">Limites du modèle ({simulation.resolved.warnings.length})</summary>
+            <ul className="list-disc space-y-2 pl-4">
+              {simulation.resolved.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
+          </details>
+          {simulation.resolved.entities.some((entity) => (entity.metrics.treasury ?? 0) < 0) && (
+            <p role="alert" className="m-0 border border-flow-alert p-2 text-sm text-fg">
+              Trésorerie négative : scénario non financé. Réduisez les sorties ou modélisez le financement avant toute décision.
+            </p>
+          )}
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex gap-2 p-2 bg-surface border-b border-border">
-            <button onClick={() => setPreviewId('kbis')} className="text-xs p-2 bg-canvas">Kbis</button>
-            <button onClick={() => setPreviewId('liasse')} className="text-xs p-2 bg-canvas">Liasse</button>
-            <button onClick={() => setPreviewId('ticket')} className="text-xs p-2 bg-canvas">Ticket</button>
-            <button onClick={() => setPreviewId(null)} className="text-xs p-2 bg-canvas">Simulation</button>
-          </div>
           <div className="min-h-0 flex-1 px-2 py-2 md:px-3">
             <FlowCanvas
               scenario={simulation.scenario}
@@ -237,7 +267,7 @@ export default function App() {
             />
             <MetricBadge
               amount={simulation.resolved.summary.netPersonalCash}
-              label="Cash perso"
+              label="Cash perso avant IR rémunération"
               tone="div"
             />
           </div>
@@ -249,6 +279,7 @@ export default function App() {
           onClose={() => setSelectedFlowId(null)}
         />
       </div>
+      )}
 
       <footer className="shrink-0 border-t border-border bg-canvas px-4 py-2">
         <DisclaimerBanner className="text-xs" />

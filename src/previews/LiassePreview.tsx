@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const LiassePreview = () => (
   <div className="p-8 bg-[#E8E4D9] min-h-screen text-[#111827] font-sans">
     <header className="mb-8 border-b-2 border-[#111827] pb-2">

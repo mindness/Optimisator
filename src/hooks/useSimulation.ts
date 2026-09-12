@@ -270,17 +270,24 @@ export function whatIfDefaultsFromResolved(
 ): Required<
   Pick<
     WhatIfInputs,
-    'caHt' | 'expensesHt' | 'executiveNetSalary' | 'dividendAmount' | 'sciRentHt'
+    'caHt' | 'expensesHt' | 'executiveNetSalary' | 'dividendAmount' | 'holdingDividendAmount' | 'sciRentHt'
   >
 > {
   const salaryFlow = resolved.flows.find((f) => f.category === 'salary');
-  const dividendFlow = resolved.flows.find((f) => f.category === 'dividend');
+  const entityType = (id: string) => resolved.entities.find((entity) => entity.id === id)?.entityType;
+  const dividendFlow = resolved.flows.find((flow) => flow.category === 'dividend' && entityType(flow.sourceId) === 'sasu');
+  const holdingDividendFlow = resolved.flows.find((flow) => {
+    const sourceType = entityType(flow.sourceId);
+    return flow.category === 'dividend' && entityType(flow.targetId) === 'person' &&
+      (sourceType === 'holding_sas' || sourceType === 'holding_sarl');
+  });
   const rentFlow = resolved.flows.find((f) => f.category === 'rent');
   return {
     caHt: resolved.summary.caHt,
     expensesHt: resolved.summary.expensesHt,
-    executiveNetSalary: salaryFlow?.resolvedAmount ?? salaryFlow?.amount ?? 0,
+    executiveNetSalary: salaryFlow?.taxResult?.netAmount ?? salaryFlow?.resolvedAmount ?? 0,
     dividendAmount: dividendFlow?.resolvedAmount ?? dividendFlow?.amount ?? 0,
+    holdingDividendAmount: holdingDividendFlow?.resolvedAmount ?? 0,
     sciRentHt: rentFlow?.resolvedAmount ?? rentFlow?.amount ?? 0,
   };
 }

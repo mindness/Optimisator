@@ -103,6 +103,7 @@ describe('resolveScenarioGraph — composite mère-fille → PFU chain', () => {
       expensesHt: 40_000,
       executiveNetSalary: 0,
       dividendAmount: 50_000,
+      holdingDividendAmount: 20_000,
     };
     const resolved = resolveScenarioGraph(SASU_HOLDING_PRESET, inputs);
 
@@ -122,7 +123,8 @@ describe('resolveScenarioGraph — composite mère-fille → PFU chain', () => {
     expect(sasuToHolding!.taxResult?.taxAmount).toBe(mereFille.holdingTax);
     expect(sasuToHolding!.taxResult?.netAmount).toBe(mereFille.netCashInHolding);
 
-    const pfuBase = mereFille.netCashInHolding;
+    // The personal distribution is independent of the retained holding cash.
+    const pfuBase = 20_000;
     const pfu = calculateFlatTax(pfuBase);
     expect(holdingToPerson!.resolvedAmount).toBe(pfuBase);
     expect(holdingToPerson!.taxResult?.taxAmount).toBe(pfu.totalTax);

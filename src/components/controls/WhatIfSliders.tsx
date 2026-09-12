@@ -5,6 +5,7 @@ export type WhatIfSlidersProps = {
   values: WhatIfInputs;
   /** Resolved/preset seeds when a whatIf key is unset. */
   defaults?: Partial<WhatIfInputs>;
+  hasHolding?: boolean;
   onChange: (patch: Partial<WhatIfInputs>) => void;
   onReset?: () => void;
   className?: string;
@@ -38,7 +39,7 @@ const SLIDERS: SliderDef[] = [
   },
   {
     key: 'executiveNetSalary',
-    label: 'Salaire net',
+    label: 'Salaire net avant IR',
     min: 0,
     max: 120_000,
     step: 1_000,
@@ -46,11 +47,19 @@ const SLIDERS: SliderDef[] = [
   },
   {
     key: 'dividendAmount',
-    label: 'Dividendes',
+    label: 'Dividendes SASU',
     min: 0,
     max: 200_000,
     step: 1_000,
     defaultValue: 20_000,
+  },
+  {
+    key: 'holdingDividendAmount',
+    label: 'Dividendes holding → personne',
+    min: 0,
+    max: 200_000,
+    step: 1_000,
+    defaultValue: 0,
   },
   {
     key: 'sciRentHt',
@@ -77,6 +86,7 @@ function readValue(
 export function WhatIfSliders({
   values,
   defaults,
+  hasHolding = false,
   onChange,
   onReset,
   className = '',
@@ -102,8 +112,11 @@ export function WhatIfSliders({
         ) : null}
       </div>
 
+      <p className="m-0 text-xs text-fg-muted">
+        Montants annuels. Les dividendes SASU et holding sont deux décisions distinctes ; zéro conserve les fonds dans la société.
+      </p>
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
-        {SLIDERS.map((def) => {
+        {SLIDERS.filter((def) => hasHolding || def.key !== 'holdingDividendAmount').map((def) => {
           const value = readValue(values, def, defaults);
           const inputId = `what-if-${def.key}`;
           return (
