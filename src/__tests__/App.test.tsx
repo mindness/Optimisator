@@ -47,12 +47,12 @@ afterEach(() => {
 });
 
 describe('App assembly', () => {
-  it.each(['Kbis', 'Liasse', 'Ticket'])('returns from the %s preview without losing inputs', () => {
+  it.each(['Kbis', 'Liasse', 'Ticket'])('returns from the %s preview without losing inputs', (name) => {
     render(<App />);
     fireEvent.change(screen.getByRole('slider', { name: 'CA HT' }), { target: { value: '150000' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Kbis' }));
+    fireEvent.click(screen.getByRole('button', { name }));
     expect(screen.getByText(/Maquette visuelle avec données fictives/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Simulation', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Simulation' }));
     expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'CA HT' })).toHaveValue('150000');
   });
