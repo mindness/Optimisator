@@ -84,6 +84,9 @@ export interface ScenarioState {
   createdAt: string;
   updatedAt: string;
   presetId?: string;
+  nodePositions?: Record<string, { x: number; y: number }>;
+  /** Directed legal relationships, never monetary flows. Unspecified owners remain unknown. */
+  ownerships?: Array<{ id: string; ownerId: string; companyId: string; percent: number }>;
 }
 
 export const scenarioStateSchema = z.object({
@@ -97,6 +100,8 @@ export const scenarioStateSchema = z.object({
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
   presetId: z.string().optional(),
+  nodePositions: z.record(z.string(), z.object({ x: z.number(), y: z.number() })).optional(),
+  ownerships: z.array(z.object({ id: z.string().min(1), ownerId: z.string().min(1), companyId: z.string().min(1), percent: z.number().positive().max(100) })).optional(),
 });
 
 export function parseScenarioState(data: unknown): ScenarioState {

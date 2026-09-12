@@ -33,7 +33,17 @@ function asEntityPayload(entity: EntityNodeData): EntityNodePayload {
 }
 
 function asFlowPayload(flow: FlowEdgeData | ViewFlow): FlowEdgePayload {
-  return flow as FlowEdgePayload;
+  // Callbacks belong to the view; never attach them to persisted scenario objects.
+  return { ...flow } as FlowEdgePayload;
+}
+
+export function ownershipEdges(ownerships: ScenarioState['ownerships'] = []): CanvasFlowEdge[] {
+  return ownerships.map((link) => ({
+    id: `ownership:${link.id}`, source: link.ownerId, target: link.companyId,
+    type: 'default', label: `Détention ${link.percent} %`,
+    style: { stroke: 'var(--fg-muted)', strokeDasharray: '6 4' },
+    labelStyle: { fill: 'var(--fg)' }, labelBgStyle: { fill: 'var(--surface)' },
+  }));
 }
 
 /** Simple left-to-right layout by role (clients → companies → sinks). */
@@ -154,6 +164,9 @@ export type FlowCanvasProps = {
   selectedFlowId?: string | null;
   className?: string;
   onFlowSelect?: (flow: FlowEdgeData) => void;
+  onPositionsChange?: (positions: NonNullable<ScenarioState['nodePositions']>) => void;
+  onConnectEntities?: (sourceId: string, targetId: string) => void;
+  showOwnership?: boolean;
 };
 
 function FlowCanvasInner({
@@ -163,14 +176,17 @@ function FlowCanvasInner({
   selectedFlowId = null,
   className = '',
   onFlowSelect,
+  onPositionsChange,
+  onConnectEntities,
+  showOwnership = true,
 }: FlowCanvasProps) {
   const entities = entitiesProp ?? scenario.entities;
   const flows = flowsProp ?? scenario.flows;
 
   const initialNodes = useMemo(() => layoutPresetNodes(entities), [entities]);
   const initialEdges = useMemo(
-    () => flowsToEdges(flows, onFlowSelect, selectedFlowId),
-    [flows, onFlowSelect, selectedFlowId],
+    () => [...flowsToEdges(flows, onFlowSelect, selectedFlowId), ...(showOwnership ? ownershipEdges(scenario.ownerships) : [])],
+    [flows, onFlowSelect, selectedFlowId, scenario.ownerships, showOwnership],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<EntityFlowNode>(initialNodes);
@@ -178,9 +194,11 @@ function FlowCanvasInner({
 
   useEffect(() => {
     const layouted = layoutPresetNodes(entities);
-    setNodes((prev) => mergeNodePositions(layouted, prev));
-    setEdges(flowsToEdges(flows, onFlowSelect, selectedFlowId));
-  }, [entities, flows, onFlowSelect, selectedFlowId, setNodes, setEdges]);
+    setNodes((prev) => mergeNodePositions(layouted, prev).map((node) => ({
+      ...node, position: scenario.nodePositions?.[node.id] ?? node.position,
+    })));
+    setEdges([...flowsToEdges(flows, onFlowSelect, selectedFlowId), ...(showOwnership ? ownershipEdges(scenario.ownerships) : [])]);
+  }, [entities, flows, scenario.nodePositions, scenario.ownerships, showOwnership, onFlowSelect, selectedFlowId, setNodes, setEdges]);
 
   return (
     <div
@@ -194,6 +212,12 @@ function FlowCanvasInner({
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        deleteKeyCode={null}
+        nodesConnectable={Boolean(onConnectEntities)}
+        onConnect={({ source, target }) => { if (source && target && source !== target) onConnectEntities?.(source, target); }}
+        onNodeDragStop={(_event, moved) => onPositionsChange?.(Object.fromEntries(
+          nodes.map((node) => [node.id, node.id === moved.id ? moved.position : node.position]),
+        ))}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

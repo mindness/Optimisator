@@ -5,6 +5,7 @@ import { DisclaimerBanner } from '@/components/common/DisclaimerBanner';
 import { MetricBadge } from '@/components/common/MetricBadge';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { FlowInspector } from '@/components/inspector/FlowInspector';
+import { ScenarioWorkspace } from '@/components/controls/ScenarioWorkspace';
 import {
   LayerSwitcher,
   MoneyTracer,
@@ -137,6 +138,9 @@ export default function App() {
                 if (next) simulation.setScenario(next);
               }}
             >
+              {!PRESETS.some((preset) => preset.id === simulation.scenario.id) && (
+                <option value={simulation.scenario.id}>{simulation.scenario.name}</option>
+              )}
               {PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -167,6 +171,7 @@ export default function App() {
       <nav className="flex shrink-0 gap-2 border-b border-border bg-surface p-2" aria-label="Vues du simulateur">
         {([
           [null, 'Simulation'],
+          ['architecture', 'Architecture'],
           ['kbis', 'Kbis'],
           ['liasse', 'Liasse'],
           ['ticket', 'Ticket'],
@@ -178,7 +183,11 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {previewId && (
+      {previewId === 'architecture' && (
+        <ScenarioWorkspace initialScenario={simulation.scenario} whatIf={simulation.whatIf}
+          onApply={(scenario) => { simulation.setScenario(scenario); setPreviewId(null); }} />
+      )}
+      {previewId && previewId !== 'architecture' && (
         <div className="min-h-0 flex-1 overflow-auto">
           <p className="m-0 border-b border-border bg-surface p-3 text-sm text-fg-muted">
             Maquette visuelle avec données fictives — aucun document officiel ni résultat de simulation.
@@ -230,6 +239,7 @@ export default function App() {
               scenario={simulation.scenario}
               entities={simulation.resolved.entities}
               flows={visibleFlows}
+              showOwnership={simulation.activeLayers.includes('legal')}
               selectedFlowId={selectedFlowId}
               onFlowSelect={handleFlowSelect}
               className="h-full min-h-[28rem] rounded-sm border border-border"
