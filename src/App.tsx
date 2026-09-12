@@ -11,7 +11,9 @@ import {
   TimelineBar,
   WhatIfSliders,
 } from '@/components/controls';
-import { FlowInspector } from '@/components/inspector';
+import { KbisPreview } from '@/previews/KbisPreview';
+import { LiassePreview } from '@/previews/LiassePreview';
+import { TicketPreview } from '@/previews/TicketPreview';
 import {
   FREELANCE_SASU_PRESET,
   FULL_GROUP_PRESET,
@@ -37,6 +39,7 @@ export default function App() {
   const timeline = useTimeline(simulation.scenario);
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [bootStatus, setBootStatus] = useState<'idle' | 'loading' | 'ready'>(
     'loading',
   );
@@ -110,7 +113,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-canvas" data-boot={bootStatus}>
+    <div className="flex h-dvh flex-col overflow-hidden bg-canvas" data-boot={bootStatus}>
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-4 py-3">
         <div>
           <h1 className="m-0 text-xl font-semibold tracking-tight text-fg">
@@ -152,13 +155,20 @@ export default function App() {
         </div>
       </header>
 
-      <ShareModal
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-        payload={sharePayload}
-      />
+      {shareOpen && (
+        <ShareModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          payload={sharePayload}
+        />
+      )}
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      {previewId === 'kbis' && <KbisPreview />}
+      {previewId === 'liasse' && <LiassePreview />}
+      {previewId === 'ticket' && <TicketPreview />}
+
+      {!previewId && (
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <aside className="flex w-full shrink-0 flex-col gap-4 border-b border-border bg-surface p-3 lg:w-72 lg:border-b-0 lg:border-r lg:overflow-y-auto">
           <LayerSwitcher
             activeLayers={simulation.activeLayers}
@@ -179,6 +189,12 @@ export default function App() {
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex gap-2 p-2 bg-surface border-b border-border">
+            <button onClick={() => setPreviewId('kbis')} className="text-xs p-2 bg-canvas">Kbis</button>
+            <button onClick={() => setPreviewId('liasse')} className="text-xs p-2 bg-canvas">Liasse</button>
+            <button onClick={() => setPreviewId('ticket')} className="text-xs p-2 bg-canvas">Ticket</button>
+            <button onClick={() => setPreviewId(null)} className="text-xs p-2 bg-canvas">Simulation</button>
+          </div>
           <div className="min-h-0 flex-1 px-2 py-2 md:px-3">
             <FlowCanvas
               scenario={simulation.scenario}
@@ -234,8 +250,8 @@ export default function App() {
         />
       </div>
 
-      <footer className="border-t border-border px-4 py-3">
-        <DisclaimerBanner />
+      <footer className="shrink-0 border-t border-border bg-canvas px-4 py-2">
+        <DisclaimerBanner className="text-xs" />
       </footer>
     </div>
   );

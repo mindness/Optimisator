@@ -12,8 +12,10 @@ description: Search the AgentForge pool before non-trivial tasks; on miss use sk
 > invocable by name when you want it explicitly.
 
 At the start of any non-trivial task — before invoking any skill, and before
-settling on an approach — call `mcp__agentforge-pool__pool_search` with a short
-query describing the task, and read the ranked candidates.
+settling on an approach — first check for relevant entries in the local 
+`pool/` directory (using the Read tool). If not found locally, call 
+`mcp__agentforge-pool__pool_search` with a short query describing the task, 
+and read the ranked candidates.
 
 Use the fully-qualified tool names: `mcp__agentforge-pool__pool_search`,
 `mcp__agentforge-pool__pool_get`, `mcp__agentforge-pool__pool_create`,

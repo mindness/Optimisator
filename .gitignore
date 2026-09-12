@@ -32,6 +32,14 @@ Thumbs.db
 .wrangler
 .dev.vars
 
-# Cursor local runtime (keep rules if any under .cursor/rules)
-.cursor/hooks/state/
-.cursor/projects/
+# Claude Code
+.claude/
+
+# Cursor
+.cursor/
+
+# AgentForge
+.agentforge/
+
+# Documentation
+**/*.md

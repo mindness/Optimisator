@@ -34,15 +34,15 @@ function resolveSasuMetrics(data: EntityNodeData) {
 
 export function SasuNode({ data, selected }: NodeProps<EntityFlowNode>) {
   const { fiscalResult, corporateTax, caHt } = resolveSasuMetrics(data);
+  const treasury = data.metrics?.treasury;
 
   return (
     <EntityNodeShell data={data} selected={selected} subtitle="SASU">
-      {caHt > 0 || data.metrics?.treasury != null ? (
-        <MetricBadge
-          amount={data.metrics?.treasury ?? caHt}
-          label="CA"
-          tone="cash"
-        />
+      {caHt > 0 ? (
+        <MetricBadge amount={caHt} label="CA HT" tone="cash" />
+      ) : null}
+      {treasury != null ? (
+        <MetricBadge amount={treasury} label="Trésorerie" tone="cash" />
       ) : null}
       <MetricBadge amount={fiscalResult} label="Résultat" tone="neutral" />
       <MetricBadge amount={corporateTax} label="IS" tone="is" />

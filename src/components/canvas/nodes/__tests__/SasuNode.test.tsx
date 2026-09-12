@@ -77,7 +77,7 @@ describe('SasuNode', () => {
     expect(root.getByText('SASU Live')).toBeInTheDocument();
     expect(root.getByText('Résultat')).toBeInTheDocument();
     expect(root.getByText('IS')).toBeInTheDocument();
-    expect(root.getByText('CA')).toBeInTheDocument();
+    expect(root.getByText('CA HT')).toBeInTheDocument();
 
     const amounts = root.getAllByText((_, node) => {
       if (node?.tagName !== 'SPAN') return false;
@@ -87,5 +87,31 @@ describe('SasuNode', () => {
     const texts = amounts.map((n) => n.textContent ?? '');
     expect(texts.some((t) => /96/.test(t) && /000/.test(t))).toBe(true);
     expect(texts.some((t) => /19/.test(t) && /750/.test(t))).toBe(true);
+  });
+
+  it('labels treasury separately from CA HT when both exist', () => {
+    renderSasu({
+      id: 'sasu-3',
+      label: 'SASU Split',
+      entityType: 'sasu',
+      inputs: { caHt: 120_000, expensesHt: 24_000 },
+      metrics: {
+        fiscalResult: 96_000,
+        corporateTax: 19_750,
+        treasury: -12_680,
+      },
+    });
+
+    expect(screen.getByText('CA HT')).toBeInTheDocument();
+    expect(screen.getByText('Trésorerie')).toBeInTheDocument();
+
+    const amounts = screen.getAllByText((_, node) => {
+      if (node?.tagName !== 'SPAN') return false;
+      if (!(node as HTMLElement).classList.contains('font-amount')) return false;
+      return (node.textContent ?? '').includes('€');
+    });
+    const texts = amounts.map((n) => n.textContent ?? '');
+    expect(texts.some((t) => /120/.test(t) && /000/.test(t))).toBe(true);
+    expect(texts.some((t) => /12/.test(t) && /680/.test(t))).toBe(true);
   });
 });
