@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const TicketPreview = () => (
   <div className="p-8 bg-[#0B1F3A] min-h-screen font-sans text-[#FFFFFF]">
     <div className="max-w-md mx-auto bg-[#FFFFFF] text-[#0B1F3A] p-6 shadow-xl transform rotate-1">

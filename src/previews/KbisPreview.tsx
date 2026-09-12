@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const KbisPreview = () => (
   <div className="p-8 bg-[#1A1F2E] min-h-screen text-[#F7F5F0] font-serif">
     <header className="border-b border-[#374151] pb-4 mb-8">
