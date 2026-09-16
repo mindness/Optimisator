@@ -20,7 +20,7 @@ import {
   type EntityFlowNode,
   type EntityNodePayload,
 } from './EntityNode';
-import { type CanvasFlowEdge, type FlowEdgePayload, flowDataFromPayload } from './FlowEdge';
+import { type OwnershipEdge, type CanvasFlowEdge, type FlowEdgePayload, flowDataFromPayload } from './FlowEdge';
 import { entityTypeToNodeType, nodeTypes } from './nodeTypes';
 
 import '@xyflow/react/dist/style.css';
@@ -37,14 +37,17 @@ function asFlowPayload(flow: FlowEdgeData | ViewFlow): FlowEdgePayload {
   return { ...flow } as FlowEdgePayload;
 }
 
-export function ownershipEdges(ownerships: ScenarioState['ownerships'] = []): CanvasFlowEdge[] {
+// React Flow state holds both kinds of edges; node/edge interaction props
+// still accept them natively. `CanvasFlowEdge` stays the precise financial type.
+type CanvasEdge = CanvasFlowEdge | OwnershipEdge;
+export const ownershipEdges = (ownerships: ScenarioState['ownerships'] = []): OwnershipEdge[] => {
   return ownerships.map((link) => ({
     id: `ownership:${link.id}`, source: link.ownerId, target: link.companyId,
     type: 'default', label: `Détention ${link.percent} %`,
     style: { stroke: 'var(--fg-muted)', strokeDasharray: '6 4' },
     labelStyle: { fill: 'var(--fg)' }, labelBgStyle: { fill: 'var(--surface)' },
   }));
-}
+};
 
 /** Simple left-to-right layout by role (clients → companies → sinks). */
 export function layoutPresetNodes(entities: EntityNodeData[]): EntityFlowNode[] {
@@ -190,7 +193,7 @@ function FlowCanvasInner({
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<EntityFlowNode>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<CanvasFlowEdge>(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<CanvasEdge>(initialEdges);
 
   useEffect(() => {
     const layouted = layoutPresetNodes(entities);
@@ -228,7 +231,8 @@ function FlowCanvasInner({
         zoomOnScroll
         proOptions={{ hideAttribution: true }}
         onEdgeClick={(_event, edge) => {
-          if (edge.data && onFlowSelect) {
+          // Ownership links are legal markers, not selectable monetary flows.
+          if (edge.type === 'flow' && edge.data && onFlowSelect) {
             onFlowSelect(flowDataFromPayload(edge.data));
           }
         }}

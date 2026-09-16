@@ -19,6 +19,12 @@ export type FlowEdgePayload = FlowEdgeData & {
 
 export type CanvasFlowEdge = Edge<FlowEdgePayload, 'flow'>;
 
+/**
+ * Legal link (ownership %) — never a monetary flow.
+ * Renders with the built-in bezier edge, no financial payload.
+ */
+export type OwnershipEdge = Edge<Record<string, never>, 'default'>;
+
 export function flowDataFromPayload(data: FlowEdgePayload): FlowEdgeData {
   return {
     id: data.id,
