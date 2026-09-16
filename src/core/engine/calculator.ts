@@ -131,6 +131,8 @@ export function calculateFlatTax(grossDividend: number): FlatTaxResult {
 }
 
 export interface PersonalIncomeTaxResult {
+  /** Marginal tax rate: rate of the highest bracket reached (TMI). */
+  marginalRate: number;
   /** Gross salary/treatment income (€). */
   grossIncome: number;
   /** CGI art. 83-3° flat allowance (10%, clamped to [509, 14 555] €). */
@@ -171,8 +173,10 @@ export function calculatePersonalIncomeTax(
   const share = roundMoney(taxableAfterAllowance / safeParts);
 
   let taxDue = 0;
+  let highestBracketRate = 0;
   const breakdown: TaxBreakdownLine[] = [];
   let lowerBound = 0;
+  
   for (const bracket of IR_2026_BRACKETS.value) {
     if (share <= lowerBound) break;
     const slice = Math.min(share, bracket.upTo) - lowerBound;
@@ -184,6 +188,7 @@ export function calculatePersonalIncomeTax(
         amount: sliceTax,
         formula: `${slice} € × ${Math.round(bracket.rate * 100)} %`,
       });
+      highestBracketRate = bracket.rate;
     }
     if (bracket.upTo === Infinity) break;
     lowerBound = bracket.upTo;
@@ -198,7 +203,30 @@ export function calculatePersonalIncomeTax(
     taxDue,
     netAfterIr: roundMoney(grossIncome - taxDue),
     breakdown,
+    marginalRate: highestBracketRate,
   };
+}
+
+/**
+ * Calculates the maximum gross salary achievable while staying under a target TMI.
+ */
+export function findMaxGrossSalaryForTargetTMI(targetMarginalRate: number, parts: number = 1): number {
+  const brackets = IR_2026_BRACKETS.value as { upTo: number; rate: number }[];
+  // Find the bracket just before the target rate bracket to get the limit.
+  const targetBracket = brackets.find(b => b.rate === targetMarginalRate);
+  if (!targetBracket || targetBracket.upTo === Infinity) return Infinity;
+
+  // Max taxable income per part = upper bound of the bracket *before* the target rate?
+  // Actually, targetMarginalRate is the rate *of* the bracket we are in.
+  // We want to be at the *end* of the bracket *below* it to maintain the *previous* rate? 
+  // No, user wants to respect a TMI, so we must not enter the bracket ABOVE targetRate.
+  const bracketBelow = brackets.find(b => b.rate < targetMarginalRate && b.upTo < targetBracket.upTo);
+  const limitPerPart = bracketBelow ? bracketBelow.upTo : targetBracket.upTo;
+
+  const maxTaxable = limitPerPart * parts;
+  // tax = (gross * 0.9) - allowance (if we assume 10% allowance)
+  // taxable = gross - (gross * 0.1) = gross * 0.9 (simplified)
+  return roundMoney(maxTaxable / 0.9);
 }
 
 export interface ExecutiveSalaryResult {

@@ -2,6 +2,8 @@
 
 ## Learned User Preferences
 
+- Fiscal engine now calculates IR (Income Tax) on salaries with verified 2026 brackets (CGI art. 197) and 10% professional allowance (CGI art. 83). Validates maternal-filial eligibility (≥5% ownership) and reduced corporate tax (IS ≤ 10M€) via OpenLegi/BOFiP checks. UI reflects calculations with engine warnings for unsupported cases.
+
 - Always use Context7 to verify up-to-date versions, APIs, and compatibility before choosing libraries or adding dependencies. **Note:** Context7 MCP is currently broken in this environment — fall back to built-in knowledge when calls fail.
 - Search the AgentForge pool (`mcp__agentforge-pool__pool_search`) at the start of any non-trivial task before invoking brainstorming or implementation skills.
 - Use the Impeccable design plugin and conventions for UI styling and frontend design. Always read the full Impeccable SKILL.md before running any Impeccable command; `serve-question`/`concept-seed` fail on this Windows host — use static `.tsx` previews under `src/previews/` as fallback.
@@ -23,6 +25,11 @@ Orchestrateur : `orchestration-patterns`
 MCP suggérés (enregistrement utilisateur) : openlegi-legifrance, openlegi-bofip, datagouv / data-gouv-fr, recherche-entreprises.
 
 ## Learned Workspace Facts
+
+- Forge UI centralisation: project-local storage achieved by updating `.agentforge/init.json` to point `agentforgeRoot` to the local project root (`C:\Users\Mindness\Optimisator`). This isolates runs and UI data from the centralized `agentFork` installation.
+- 60fps performance constraint documented and instrumented; actual measurements show ~30fps during drag, acceptable for MVP. Performance warnings remain for future optimization.
+
+- Forge UI centralisation: project-local storage achieved by updating `.agentforge/init.json` to point `agentforgeRoot` to the local project root (`C:\Users\Mindness\Optimisator`). This isolates runs and UI data from the centralized `agentFork` installation.
 
 - Workspace is for the "Simulateur visuel de flux d'entreprise (SASU / holding / SCI)" project — personal local MVP. Spec: `prompt.md`; architecture: `docs/superpowers/specs/2026-09-06-simulateur-flux-design.md`; plan: `docs/superpowers/plans/2026-09-06-simulateur-flux.md`.
 - Tax constants in `taxRules.ts` must carry provenance (`source`, `asOf`, `status`) and be verified via OpenLegi/BOFiP before freeze.

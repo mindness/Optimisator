@@ -6,6 +6,7 @@ export {
   calculatePersonalIncomeTax,
   calculateSciTax,
   calculateVAT,
+  findMaxGrossSalaryForTargetTMI,
   roundMoney,
   type CorporateTaxResult,
   type ExecutiveSalaryResult,
