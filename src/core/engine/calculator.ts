@@ -2,9 +2,14 @@
  * Pure deterministic French tax math for the simulateur.
  * Money amounts (EUR) are rounded to cents: Math.round(x * 100) / 100.
  */
+import type { TaxBreakdownLine } from '../types';
 import {
   EXECUTIVE_COST_FACTOR_APPROX,
   EXECUTIVE_EMPLOYEE_RATE_APPROX,
+  IR_2026_BRACKETS,
+  IR_EXPENSE_ALLOWANCE_CAP_EUR,
+  IR_EXPENSE_ALLOWANCE_FLOOR_EUR,
+  IR_EXPENSE_FLAT_10_PCT,
   IS_REDUCED_RATE,
   IS_REDUCED_THRESHOLD_EUR,
   IS_STANDARD_RATE,
@@ -50,14 +55,29 @@ export interface CorporateTaxResult {
 /**
  * IS PME: 15% up to IS_REDUCED_THRESHOLD_EUR, then 25% on the excess (CGI art. 219).
  * Non-positive taxable income → zero tax; netProfit mirrors the loss.
+ * `reducedRateEligible` defaults to true (preset PME assumption); when false,
+ * the 25% standard rate applies to the whole taxable income.
  */
-export function calculateCorporateTax(taxableIncome: number): CorporateTaxResult {
+export function calculateCorporateTax(
+  taxableIncome: number,
+  reducedRateEligible: boolean = true,
+): CorporateTaxResult {
   if (taxableIncome <= 0) {
     return {
       bracket15: 0,
       bracket25: 0,
       taxDue: 0,
       netProfit: roundMoney(taxableIncome),
+    };
+  }
+
+  if (!reducedRateEligible) {
+    const taxDue = roundMoney(taxableIncome * IS_STANDARD_RATE.value);
+    return {
+      bracket15: 0,
+      bracket25: taxDue,
+      taxDue,
+      netProfit: roundMoney(taxableIncome - taxDue),
     };
   }
 
@@ -108,6 +128,77 @@ export function calculateFlatTax(grossDividend: number): FlatTaxResult {
   const totalTax = roundMoney(irPart + psPart);
   const netIncome = roundMoney(grossDividend - totalTax);
   return { irPart, psPart, totalTax, netIncome };
+}
+
+export interface PersonalIncomeTaxResult {
+  /** Gross salary/treatment income (€). */
+  grossIncome: number;
+  /** CGI art. 83-3° flat allowance (10%, clamped to [509, 14 555] €). */
+  professionalAllowance: number;
+  /** net salary subject to brackets after allowance (€). */
+  taxableAfterAllowance: number;
+  /** Number of quotient-familial parts (default 1). */
+  parts: number;
+  /** Progressive tax computed bracket by bracket (€). */
+  taxDue: number;
+  /** gross − taxDue (what actually lands in the pocket). */
+  netAfterIr: number;
+  breakdown: TaxBreakdownLine[];
+}
+
+/**
+ * IR personnel 2026 sur traitements et salaires (CGI art. 197 + art. 83).
+ * Forfait frais pro 10 % plafonné/forcé, puis barème progressif par part.
+ * This is a simplified single-income calculation: no décote, no abattements
+ * spéciaux, no PFU interaction — adequate for MVP simulation, not a tax return.
+ */
+export function calculatePersonalIncomeTax(
+  grossIncome: number,
+  parts: number = 1,
+): PersonalIncomeTaxResult {
+  const safeParts = Math.max(0.5, parts);
+
+  const rawAllowance = grossIncome * IR_EXPENSE_FLAT_10_PCT.value;
+  const professionalAllowance = roundMoney(
+    Math.min(
+      Math.max(rawAllowance, IR_EXPENSE_ALLOWANCE_FLOOR_EUR.value),
+      IR_EXPENSE_ALLOWANCE_CAP_EUR.value,
+    ),
+  );
+  const taxableAfterAllowance = roundMoney(
+    Math.max(0, grossIncome - professionalAllowance),
+  );
+  const share = roundMoney(taxableAfterAllowance / safeParts);
+
+  let taxDue = 0;
+  const breakdown: TaxBreakdownLine[] = [];
+  let lowerBound = 0;
+  for (const bracket of IR_2026_BRACKETS.value) {
+    if (share <= lowerBound) break;
+    const slice = Math.min(share, bracket.upTo) - lowerBound;
+    const sliceTax = roundMoney(slice * bracket.rate);
+    if (slice > 0) {
+      taxDue += sliceTax;
+      breakdown.push({
+        label: `${Math.round(bracket.rate * 100)} %`,
+        amount: sliceTax,
+        formula: `${slice} € × ${Math.round(bracket.rate * 100)} %`,
+      });
+    }
+    if (bracket.upTo === Infinity) break;
+    lowerBound = bracket.upTo;
+  }
+
+  taxDue = roundMoney(taxDue * safeParts);
+  return {
+    grossIncome,
+    professionalAllowance,
+    taxableAfterAllowance,
+    parts: safeParts,
+    taxDue,
+    netAfterIr: roundMoney(grossIncome - taxDue),
+    breakdown,
+  };
 }
 
 export interface ExecutiveSalaryResult {

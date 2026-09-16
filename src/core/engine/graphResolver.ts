@@ -17,13 +17,19 @@ import {
   calculateExecutiveSalary,
   calculateFlatTax,
   calculateMotherDaughterDividend,
+  calculatePersonalIncomeTax,
   calculateSciTax,
   calculateVAT,
   roundMoney,
   type CorporateTaxResult,
   type ExecutiveSalaryResult,
+  type PersonalIncomeTaxResult,
   type VatResult,
 } from './calculator';
+import {
+  IS_REDUCED_CA_CEILING_EUR,
+  MOTHER_DAUGHTER_MIN_HOLDING_PCT,
+} from './taxRules';
 import {
   TIMELINE_STEPS,
   timelineStepIdForCategory,
@@ -65,8 +71,11 @@ export interface ResolvedScenarioSummary {
   vat: VatResult;
   corporateTax: CorporateTaxResult;
   executiveSalary: ExecutiveSalaryResult;
+  /** IR personnel sur rémunération nette (barème 2026, 1 part). */
+  personalIncomeTax: PersonalIncomeTaxResult;
   sciTaxDue: number;
   netGroupCash: number;
+  /** Argent net après URSSAF, IS et IR personnel (rémunération + dividendes PFU). */
   netPersonalCash: number;
 }
 
@@ -184,7 +193,10 @@ export function resolveScenarioGraph(
   const taxableIncome = roundMoney(
     caHt - expensesHt - executiveSalary.totalCompanyCost - rentDeduction,
   );
-  const corporateTax = calculateCorporateTax(taxableIncome);
+  // CGI art. 219 I-b: reduced 15% rate only if CA ≤ 10 M€ (PME ceiling).
+  // Full ownership conditions (capital paid-up, ≥75% individuals) not modelled.
+  const reducedRateEligible = caHt <= IS_REDUCED_CA_CEILING_EUR.value;
+  const corporateTax = calculateCorporateTax(taxableIncome, reducedRateEligible);
 
   // Override only the first matching flow; other edges keep their own amounts.
   const opcoDividendId = scenario.flows.find((flow) =>
@@ -206,6 +218,23 @@ export function resolveScenarioGraph(
       flow.category === 'dividend' && flow.targetId === entityId &&
       findEntity(scenario.entities, flow.sourceId)?.entityType === 'sasu',
     ).reduce((sum, flow) => sum + calculateMotherDaughterDividend(dividendAmountFor(flow)).holdingTax, 0),
+  );
+
+  /**
+   * CGI art. 145: mother-daughter regime requires ≥ 5% of the target's capital.
+   * Check ownership links (or the legacy `ownershipPercent` on the OpCo).
+   */
+  const holdingQualifies = (holdingId: string): boolean => {
+    const links = scenario.ownerships ?? [];
+    const linkOk = links.some(
+      (link) => link.ownerId === holdingId && link.percent >= MOTHER_DAUGHTER_MIN_HOLDING_PCT.value * 100,
+    );
+    if (linkOk) return true;
+    const sasu = entityByType(scenario.entities, 'sasu');
+    return (sasu?.ownershipPercent ?? 0) >= MOTHER_DAUGHTER_MIN_HOLDING_PCT.value * 100;
+  };
+  const holdingsBelowThreshold = scenario.entities.filter(
+    (entity) => isHolding(entity.entityType) && !holdingQualifies(entity.id),
   );
 
   const calculations: TaxCalculationResult[] = [];
@@ -438,8 +467,14 @@ export function resolveScenarioGraph(
       const received = roundMoney(resolvedFlows.filter((flow) =>
         flow.targetId === entity.id && (flow.category === 'salary' || flow.category === 'dividend'),
       ).reduce((sum, flow) => sum + (flow.taxResult?.netAmount ?? flow.resolvedAmount), 0));
-      metrics.netPersonalCash = received;
-      metrics.treasury = received;
+      // IR on net salary (barème 2026, 1 part) applies to the salary portion only.
+      const salaryNet = roundMoney(resolvedFlows.filter((flow) =>
+        flow.targetId === entity.id && flow.category === 'salary',
+      ).reduce((sum, flow) => sum + (flow.taxResult?.netAmount ?? flow.resolvedAmount), 0));
+      const irDue = salaryNet > 0 ? calculatePersonalIncomeTax(salaryNet).taxDue : 0;
+      metrics.netPersonalCash = roundMoney(received - irDue);
+      metrics.personalIncomeTax = irDue;
+      metrics.treasury = metrics.netPersonalCash;
     }
 
     return { ...entity, metrics };
@@ -450,11 +485,22 @@ export function resolveScenarioGraph(
   ).reduce((sum, entity) => sum + (entity.metrics.treasury ?? 0), 0));
   const netPersonalCash = roundMoney(entities.filter((entity) => entity.entityType === 'person')
     .reduce((sum, entity) => sum + (entity.metrics.netPersonalCash ?? 0), 0));
+  const personalIncomeTax = calculatePersonalIncomeTax(executiveNet);
   const warnings = [
-    'Modèle annuel simplifié, soldes initiaux nuls et paiements dans la période ; IR des rémunérations non calculé et cotisations approximatives.',
-    'Éligibilité IS réduit et mère-fille non contrôlée ; IS holding limité à la QPFC. Taux issus du référentiel du dépôt, non revérifiés ici.',
-    'Dividendes saisis sans validation du bénéfice distribuable, des réserves ni des conditions juridiques : une trésorerie positive ne vaut pas autorisation de distribution.',
+    'Modèle annuel simplifié, soldes initiaux nuls et paiements dans la période ; IR des rémunérations calculé selon le barème 2026 (1 part) et cotisations approximatives.',
   ];
+  if (!reducedRateEligible) {
+    warnings.push('CA > 10 M€ : le taux réduit d’IS (15 %) n’est pas applicable (CGI art. 219 I-b) — l’IS est calculé au taux normal de 25 %.');
+  } else {
+    warnings.push('IS réduit 15 % appliqué : éligibilité CA ≤ 10 M€ vérifiée ; conditions de détention du capital (libéré, ≥ 75 % personnes physiques) non contrôlées.');
+  }
+  if (holdingsBelowThreshold.length > 0) {
+    warnings.push('Holding(s) sous le seuil mère-fille (détention < 5 %) : le régime (CGI art. 145) est appliqué de façon conservatrice mais requiert vérification par un professionnel.');
+  }
+  if (executiveNet > 0) {
+    warnings.push('IR personnel calculé sur la rémunération nette (barème 2026, 1 part, abattement 10 %) ; sans décote ni situation familiale personnalisée.');
+  }
+  warnings.push('Dividendes saisis sans validation du bénéfice distribuable, des réserves ni des conditions juridiques : une trésorerie positive ne vaut pas autorisation de distribution.');
   const unsupportedCategories: FlowCategory[] = ['management_fees', 'cca_advance', 'cca_reimbursement', 'loan_payment'];
   if (scenario.flows.some((flow) => unsupportedCategories.includes(flow.category) && flow.amount !== 0)) {
     warnings.push('Management fees, CCA et emprunts : flux affichés mais non intégrés aux soldes et résultats de ce modèle. Ne pas utiliser ces scénarios pour décider.');
@@ -490,6 +536,7 @@ export function resolveScenarioGraph(
       vat,
       corporateTax,
       executiveSalary,
+      personalIncomeTax,
       sciTaxDue: sciTax.taxDue,
       netGroupCash,
       netPersonalCash,

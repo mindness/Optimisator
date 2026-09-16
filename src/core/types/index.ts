@@ -43,6 +43,7 @@ export {
   type SourcedRate,
   type SourcedRateStatus,
   type SourcedRateUnit,
+  type TaxBracket,
   type TaxBreakdownLine,
   type TaxCalculationResult,
 } from './scenario';

@@ -5,11 +5,17 @@ import {
   calculateExecutiveSalary,
   calculateFlatTax,
   calculateMotherDaughterDividend,
+  calculatePersonalIncomeTax,
   calculateSciTax,
   calculateVAT,
 } from '../calculator';
 import {
   EXECUTIVE_COST_FACTOR_APPROX,
+  IR_2026_BRACKETS,
+  IR_EXPENSE_ALLOWANCE_CAP_EUR,
+  IR_EXPENSE_ALLOWANCE_FLOOR_EUR,
+  IR_EXPENSE_FLAT_10_PCT,
+  IS_REDUCED_CA_CEILING_EUR,
   IS_REDUCED_RATE,
   IS_REDUCED_THRESHOLD_EUR,
   IS_STANDARD_RATE,
@@ -46,6 +52,8 @@ describe('taxRules provenance', () => {
     expect(IS_REDUCED_RATE).toMatchObject({ value: 0.15, status: 'verified' });
     expect(IS_REDUCED_THRESHOLD_EUR).toMatchObject({ value: 42500, status: 'verified' });
     expect(MOTHER_DAUGHTER_QPFC_RATE).toMatchObject({ value: 0.05, status: 'verified' });
+    expect(IS_REDUCED_CA_CEILING_EUR).toMatchObject({ value: 10_000_000, status: 'verified' });
+    expect(IR_EXPENSE_FLAT_10_PCT).toMatchObject({ value: 0.1, status: 'verified' });
   });
 });
 
@@ -112,6 +120,15 @@ describe('calculateCorporateTax', () => {
       netProfit: -10_000,
     });
   });
+
+  it('applies the full standard rate when reduced-rate eligibility is false', () => {
+    const income = 50_000;
+    const result = calculateCorporateTax(income, false);
+    expect(result.bracket15).toBe(0);
+    expect(result.bracket25).toBe(euros(income * IS_STANDARD_RATE.value));
+    expect(result.taxDue).toBe(result.bracket25);
+    expect(result.netProfit).toBe(euros(income - result.taxDue));
+  });
 });
 
 describe('calculateMotherDaughterDividend', () => {
@@ -155,6 +172,55 @@ describe('calculateFlatTax', () => {
     expect(result.psPart).toBe(euros(333.33 * 0.186));
     expect(result.totalTax).toBe(euros(result.irPart + result.psPart));
     expect(result.netIncome).toBe(euros(333.33 - result.totalTax));
+  });
+});
+
+describe('calculatePersonalIncomeTax — barème IR 2026 (CGI art. 197, abattement 10 % art. 83)', () => {
+  it('exposes the 2026 verified bracket scale with 10% professional allowance', () => {
+    expect(IR_2026_BRACKETS.status).toBe('verified');
+    expect(IR_EXPENSE_FLAT_10_PCT.status).toBe('verified');
+    expect(IR_2026_BRACKETS.value).toEqual([
+      { upTo: 11_600, rate: 0 },
+      { upTo: 29_579, rate: 0.11 },
+      { upTo: 84_577, rate: 0.3 },
+      { upTo: 181_917, rate: 0.41 },
+      { upTo: Number.POSITIVE_INFINITY, rate: 0.45 },
+    ]);
+  });
+
+  it('is zero below the first bracket', () => {
+    const result = calculatePersonalIncomeTax(10_000);
+    expect(result.taxableAfterAllowance).toBe(9_000);
+    expect(result.taxDue).toBe(0);
+    expect(result.netAfterIr).toBe(10_000);
+  });
+
+  it('applies 11% only above 11 600 € (1 part)', () => {
+    const gross = 30_000; // abattement 10% → 27 000 taxable
+    const result = calculatePersonalIncomeTax(gross);
+    const taxable = 27_000;
+    const base = taxable - 11_600; // 15 400
+    expect(result.taxableAfterAllowance).toBe(taxable);
+    expect(result.breakdown).toContainEqual(
+      expect.objectContaining({ label: '11 %', amount: euros(base * 0.11) }),
+    );
+    expect(result.taxDue).toBe(euros(base * 0.11));
+    expect(result.netAfterIr).toBe(euros(gross - result.taxDue));
+  });
+
+  it('clips the 10% allowance to the 14 555 € cap and 509 € floor', () => {
+    const high = calculatePersonalIncomeTax(200_000);
+    expect(high.professionalAllowance).toBe(IR_EXPENSE_ALLOWANCE_CAP_EUR.value);
+    const low = calculatePersonalIncomeTax(3_000);
+    // 10% of 3 000 = 300 < 509 floor → allowance 509
+    expect(low.professionalAllowance).toBe(IR_EXPENSE_ALLOWANCE_FLOOR_EUR.value);
+  });
+
+  it('supports a fraction of share (quotient familial)', () => {
+    const single = calculatePersonalIncomeTax(80_000, 1);
+    const couple = calculatePersonalIncomeTax(80_000, 2);
+    expect(couple.taxDue).toBeLessThan(single.taxDue);
+    expect(couple.taxDue).toBeGreaterThan(0);
   });
 });
 

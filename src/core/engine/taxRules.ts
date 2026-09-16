@@ -3,7 +3,7 @@
  * Values copied from `src/core/legal/sourced-rates.draft.json` (tax-lawyer-fr batch).
  * Never call OpenLegi from the What-If / runtime path — refresh the draft offline.
  */
-import type { SourcedRate } from '../types';
+import type { SourcedRate, TaxBracket } from '../types';
 
 export const VAT_STANDARD: SourcedRate = {
   value: 0.2,
@@ -39,6 +39,19 @@ export const IS_REDUCED_THRESHOLD_EUR: SourcedRate = {
   source:
     'CGI art. 219, I-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
   asOf: '2026-09-07',
+  status: 'verified',
+};
+
+/**
+ * CGI art. 219 I-b — CA ceiling (€) for reduced IS eligibility (PME).
+ * Must be combined with: capital fully paid-up and held ≥75% by individuals.
+ */
+export const IS_REDUCED_CA_CEILING_EUR: SourcedRate = {
+  value: 10_000_000,
+  unit: 'eur',
+  source:
+    'CGI art. 219, I-b al. 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
+  asOf: '2026-09-16',
   status: 'verified',
 };
 
@@ -93,6 +106,56 @@ export const PFU_TOTAL_RATE: SourcedRate = {
   source:
     'Derived: CGI art. 200 A (12,8 % verified) + package PS 18,6 % verified — voir PFU_IR_RATE / PFU_PS_RATE',
   asOf: '2026-09-07',
+  status: 'verified',
+};
+
+/**
+ * IR 2026 progressive brackets (CGI art. 197 I-1, loi n° 2026-103 du 19/02/2026).
+ * Applied to one share of income; thresholds in € / part.
+ * The 0% first bracket (≤ 11 600 €) keeps `parseFloat`-friendly provenance.
+ */
+export const IR_2026_BRACKETS: SourcedRate<TaxBracket[]> = {
+  value: [
+    { upTo: 11_600, rate: 0 },
+    { upTo: 29_579, rate: 0.11 },
+    { upTo: 84_577, rate: 0.3 },
+    { upTo: 181_917, rate: 0.41 },
+    { upTo: Number.POSITIVE_INFINITY, rate: 0.45 },
+  ],
+  unit: 'eur',
+  source:
+    'CGI art. 197, I-1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542636 (loi n° 2026-103 du 19/02/2026, applicable revenus 2025+)',
+  asOf: '2026-09-16',
+  status: 'verified',
+};
+
+/** Flat-rate professional expenses allowance on salaries (CGI art. 83-3°). */
+export const IR_EXPENSE_FLAT_10_PCT: SourcedRate = {
+  value: 0.1,
+  unit: 'ratio',
+  source:
+    'CGI art. 83, 3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373766 (10 %, plafond 14 555 €/an, minimum 509 €)',
+  asOf: '2026-09-16',
+  status: 'verified',
+};
+
+/** CGI art. 83-3° cap (€) for the 10% allowance — revenus 2025. */
+export const IR_EXPENSE_ALLOWANCE_CAP_EUR: SourcedRate = {
+  value: 14_555,
+  unit: 'eur',
+  source:
+    'CGI art. 83, 3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373766',
+  asOf: '2026-09-16',
+  status: 'verified',
+};
+
+/** CGI art. 83-3° floor (€) for the 10% allowance. */
+export const IR_EXPENSE_ALLOWANCE_FLOOR_EUR: SourcedRate = {
+  value: 509,
+  unit: 'eur',
+  source:
+    'CGI art. 83, 3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373766',
+  asOf: '2026-09-16',
   status: 'verified',
 };
 

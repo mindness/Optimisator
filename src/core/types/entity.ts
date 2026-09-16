@@ -37,6 +37,8 @@ export interface EntityMetrics {
   corporateTax?: number;
   netProfit?: number;
   netPersonalCash?: number;
+  /** Cents after personal income tax on salary (barème, 1 part). */
+  personalIncomeTax?: number;
   ccaBalance?: number;
 }
 
@@ -46,6 +48,7 @@ export const entityMetricsSchema = z.object({
   corporateTax: z.number().optional(),
   netProfit: z.number().optional(),
   netPersonalCash: z.number().optional(),
+  personalIncomeTax: z.number().optional(),
   ccaBalance: z.number().optional(),
 });
 

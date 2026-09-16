@@ -9,8 +9,12 @@ export type SourcedRateUnit = 'ratio' | 'eur' | 'pct_points';
 
 export type SourcedRateStatus = 'verified' | 'assumed' | 'placeholder';
 
-export interface SourcedRate {
-  value: number;
+/** Progressive bracket: income band upper bound (€) and marginal rate. */
+export type TaxBracket = { upTo: number; rate: number };
+
+/** External tax parameter with mandatory provenance (design spec §3.0). */
+export interface SourcedRate<TValue = number> {
+  value: TValue;
   unit: SourcedRateUnit;
   source: string;
   asOf: string;
