@@ -23,6 +23,8 @@ import {
   PFU_IR_RATE,
   PFU_PS_RATE,
   PFU_TOTAL_RATE,
+  URSSAF_EMPLOYEE_RATE_2026,
+  URSSAF_EMPLOYER_RATE_2026,
   VAT_STANDARD,
 } from '../taxRules';
 
@@ -39,6 +41,13 @@ describe('taxRules provenance', () => {
     expect(PFU_TOTAL_RATE.value).toBe(0.314);
     expect(PFU_IR_RATE.status).toBe('verified');
     expect(PFU_IR_RATE.value).toBe(0.128);
+  });
+
+  it('keeps flat salary contribution assumptions unverified', () => {
+    expect(URSSAF_EMPLOYEE_RATE_2026.status).toBe('placeholder');
+    expect(URSSAF_EMPLOYEE_RATE_2026.value).toBe(0.21);
+    expect(URSSAF_EMPLOYER_RATE_2026.status).toBe('placeholder');
+    expect(URSSAF_EMPLOYER_RATE_2026.value).toBe(0.39);
   });
 
   it('marks executive cost factor as placeholder ~1.8', () => {
@@ -225,18 +234,20 @@ describe('calculatePersonalIncomeTax — barème IR 2026 (CGI art. 197, abatteme
 });
 
 describe('calculateExecutiveSalary', () => {
-  it('scales company cost by placeholder factor 1.8 and decomposes charges', () => {
+  it('reconstructs gross / charges from flat model assumptions (salariales 21 %, patronales 39 %)', () => {
     const netDesired = 50_000;
     const result = calculateExecutiveSalary(netDesired);
 
-    expect(result.totalCompanyCost).toBe(euros(netDesired * EXECUTIVE_COST_FACTOR_APPROX.value));
+    expect(result.grossSalary).toBe(euros(netDesired / (1 - URSSAF_EMPLOYEE_RATE_2026.value)));
+    expect(result.employeeCharges).toBe(euros(result.grossSalary - netDesired));
+    expect(result.employerCharges).toBe(euros(result.grossSalary * URSSAF_EMPLOYER_RATE_2026.value));
+    expect(result.totalCompanyCost).toBe(euros(result.grossSalary + result.employerCharges));
     expect(result.grossSalary).toBeGreaterThan(netDesired);
     expect(result.employerCharges).toBeGreaterThan(0);
     expect(result.employeeCharges).toBeGreaterThan(0);
-    expect(
-      euros(result.grossSalary + result.employerCharges),
-    ).toBe(result.totalCompanyCost);
     expect(euros(result.grossSalary - result.employeeCharges)).toBe(netDesired);
+    // coherence: ratio cost/net ≈ 1,76 (URSSAF 2026 xxx)
+    expect(result.totalCompanyCost / netDesired).toBeCloseTo(1.76, 1);
   });
 
   it('returns zeros for zero net desired', () => {

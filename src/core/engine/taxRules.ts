@@ -172,6 +172,30 @@ export const EXECUTIVE_COST_FACTOR_APPROX: SourcedRate = {
 };
 
 /**
+ * Hypothèses forfaitaires du modèle pour le président SASU assimilé-salarié.
+ * Salariales 21 % du brut, patronales 39 % du brut : coût = 1,39 × brut,
+ * soit environ 1,76 × net. Ces agrégats ne sont pas des taux légaux vérifiés ;
+ * ils ne modélisent pas les assiettes, plafonds et tranches d'une fiche de paie.
+ */
+export const URSSAF_EMPLOYEE_RATE_2026: SourcedRate = {
+  value: 0.21,
+  unit: 'ratio',
+  source:
+    'Hypothèse de simulation : cotisations salariales agrégées à 21 % du brut, non vérifiées ; ne remplace pas un calcul de paie URSSAF.',
+  asOf: '2026-09-17',
+  status: 'placeholder',
+};
+
+export const URSSAF_EMPLOYER_RATE_2026: SourcedRate = {
+  value: 0.39,
+  unit: 'ratio',
+  source:
+    'Hypothèse de simulation : cotisations patronales agrégées à 39 % du brut, non vérifiées ; ne remplace pas un calcul de paie URSSAF.',
+  asOf: '2026-09-17',
+  status: 'placeholder',
+};
+
+/**
  * Implicit employee contribution rate used only to decompose
  * `EXECUTIVE_COST_FACTOR_APPROX` into gross / employer / employee
  * (gross = net / (1 - rate); employer = cost − gross).

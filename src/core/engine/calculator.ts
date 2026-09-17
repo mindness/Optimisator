@@ -4,8 +4,6 @@
  */
 import type { TaxBreakdownLine } from '../types';
 import {
-  EXECUTIVE_COST_FACTOR_APPROX,
-  EXECUTIVE_EMPLOYEE_RATE_APPROX,
   IR_2026_BRACKETS,
   IR_EXPENSE_ALLOWANCE_CAP_EUR,
   IR_EXPENSE_ALLOWANCE_FLOOR_EUR,
@@ -16,6 +14,8 @@ import {
   MOTHER_DAUGHTER_QPFC_RATE,
   PFU_IR_RATE,
   PFU_PS_RATE,
+  URSSAF_EMPLOYEE_RATE_2026,
+  URSSAF_EMPLOYER_RATE_2026,
   VAT_STANDARD,
 } from './taxRules';
 
@@ -238,9 +238,10 @@ export interface ExecutiveSalaryResult {
 
 /**
  * Approximate président assimilé-salarié cost from desired net.
- * totalCompanyCost = net × EXECUTIVE_COST_FACTOR_APPROX (placeholder 1.8).
- * Gross derived with EXECUTIVE_EMPLOYEE_RATE_APPROX (0.22); employer charges
- * are the residual so that gross + employer = totalCompanyCost (cent-safe).
+ * Flat model assumptions: employee charges 21 % and employer charges 39 % of gross.
+ * These unverified aggregates are not a statutory payroll calculation.
+ * Gross = net / (1 - employee rate); company cost = gross + employer charges.
+ * Monetary components are rounded to cents.
  */
 export function calculateExecutiveSalary(netDesired: number): ExecutiveSalaryResult {
   if (netDesired === 0) {
@@ -252,14 +253,12 @@ export function calculateExecutiveSalary(netDesired: number): ExecutiveSalaryRes
     };
   }
 
-  const factor = EXECUTIVE_COST_FACTOR_APPROX.value;
-  const employeeRate = EXECUTIVE_EMPLOYEE_RATE_APPROX;
-
-  // Anchor cost to net × factor, then residual-decompose so cents reconcile.
-  const totalCompanyCost = roundMoney(netDesired * factor);
+  const employeeRate = URSSAF_EMPLOYEE_RATE_2026.value;
+  const employerRate = URSSAF_EMPLOYER_RATE_2026.value;
   const grossSalary = roundMoney(netDesired / (1 - employeeRate));
   const employeeCharges = roundMoney(grossSalary - netDesired);
-  const employerCharges = roundMoney(totalCompanyCost - grossSalary);
+  const employerCharges = roundMoney(grossSalary * employerRate);
+  const totalCompanyCost = roundMoney(grossSalary + employerCharges);
 
   return { grossSalary, employerCharges, employeeCharges, totalCompanyCost };
 }
