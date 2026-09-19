@@ -3,6 +3,9 @@ import { useMemo, useState } from 'react';
 import { formatEuro } from '@/components/common/MetricBadge';
 import {
   optimizeRemuneration,
+  URSSAF_BRANCHES_2026,
+  URSSAF_EMPLOYEE_RATE_2026,
+  URSSAF_EMPLOYER_RATE_2026,
   type OptimizationObjective,
   type OptimizationPoint,
 } from '@/core/engine';
@@ -201,6 +204,30 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
             ))}
           </tbody>
         </table>
+      </details>
+
+      <details className="border border-border p-3 text-sm">
+        <summary className="min-h-11 cursor-pointer text-fg">
+          D’où viennent les cotisations ({(URSSAF_EMPLOYEE_RATE_2026.value * 100).toFixed(2)} %
+          salariales + {(URSSAF_EMPLOYER_RATE_2026.value * 100).toFixed(2)} % patronales)
+        </summary>
+        <ul className="mt-2 space-y-2">
+          {URSSAF_BRANCHES_2026.map((branch) => (
+            <li key={branch.label} className="border-t border-border pt-2 first:border-t-0 first:pt-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-fg">{branch.label}</span>
+                <span className="font-amount text-fg-muted">
+                  {(branch.employee * 100).toFixed(2)} % / {(branch.employer * 100).toFixed(2)} %
+                </span>
+              </div>
+              <p className="m-0 text-xs text-fg-muted">
+                {branch.status === 'verified' ? '' : `[${branch.status}] `}
+                {branch.source}
+              </p>
+              {branch.note && <p className="m-0 text-xs text-fg-muted">{branch.note}</p>}
+            </li>
+          ))}
+        </ul>
       </details>
 
       <div className="border border-flow-alert p-3">

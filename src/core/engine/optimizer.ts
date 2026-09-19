@@ -55,7 +55,7 @@ export const DEFAULT_PAYOUT_RATIOS = [0, 0.25, 0.5, 0.75, 1] as const;
 export const OPTIMIZER_BLIND_SPOTS = [
   'Arbitrage salaire/dividendes seul, à structure et charges constantes.',
   'Les droits sociaux (retraite, chômage, prévoyance, indemnités journalières) ne sont pas valorisés : un optimum en cash peut coûter cher en couverture.',
-  "Cotisations sociales agrégées (hypothèse de modèle), pas un calcul de paie URSSAF.",
+  'Cotisations sociales sommées à taux plats sur le brut : ni plafond de sécurité sociale, ni réduction générale, ni tranche 2. Ce n’est pas un bulletin de paie.',
   'La distribution de dividendes suppose un résultat distribuable et une décision d’assemblée : le moteur ne vérifie ni les réserves ni les capitaux propres.',
 ] as const;
 

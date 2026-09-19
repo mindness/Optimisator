@@ -23,6 +23,7 @@ import {
   PFU_IR_RATE,
   PFU_PS_RATE,
   PFU_TOTAL_RATE,
+  URSSAF_BRANCHES_2026,
   URSSAF_EMPLOYEE_RATE_2026,
   URSSAF_EMPLOYER_RATE_2026,
   VAT_STANDARD,
@@ -43,11 +44,23 @@ describe('taxRules provenance', () => {
     expect(PFU_IR_RATE.value).toBe(0.128);
   });
 
-  it('keeps flat salary contribution assumptions unverified', () => {
-    expect(URSSAF_EMPLOYEE_RATE_2026.status).toBe('placeholder');
-    expect(URSSAF_EMPLOYEE_RATE_2026.value).toBe(0.21);
-    expect(URSSAF_EMPLOYER_RATE_2026.status).toBe('placeholder');
-    expect(URSSAF_EMPLOYER_RATE_2026.value).toBe(0.39);
+  it('derives the aggregate contribution rates from the sourced branch table', () => {
+    const sum = (side: 'employee' | 'employer') =>
+      URSSAF_BRANCHES_2026.reduce((total, branch) => total + branch[side], 0);
+
+    expect(URSSAF_EMPLOYEE_RATE_2026.value).toBeCloseTo(sum('employee'), 4);
+    expect(URSSAF_EMPLOYER_RATE_2026.value).toBeCloseTo(sum('employer'), 4);
+    // Sourced line by line, but summed flat: never claim 'verified'.
+    expect(URSSAF_EMPLOYEE_RATE_2026.status).toBe('assumed');
+    expect(URSSAF_EMPLOYER_RATE_2026.status).toBe('assumed');
+  });
+
+  it('cites a source for every contribution branch', () => {
+    for (const branch of URSSAF_BRANCHES_2026) {
+      expect(branch.source.length).toBeGreaterThan(0);
+    }
+    // No unemployment branch: a président de SASU is not affiliated.
+    expect(URSSAF_BRANCHES_2026.some((b) => /chômage/i.test(b.label))).toBe(false);
   });
 
   it('marks executive cost factor as placeholder ~1.8', () => {

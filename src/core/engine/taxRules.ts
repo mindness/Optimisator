@@ -3,7 +3,7 @@
  * Values copied from `src/core/legal/sourced-rates.draft.json` (tax-lawyer-fr batch).
  * Never call OpenLegi from the What-If / runtime path — refresh the draft offline.
  */
-import type { SourcedRate, TaxBracket } from '../types';
+import type { SourcedRate, SourcedRateStatus, TaxBracket } from '../types';
 
 export const VAT_STANDARD: SourcedRate = {
   value: 0.2,
@@ -171,28 +171,128 @@ export const EXECUTIVE_COST_FACTOR_APPROX: SourcedRate = {
   status: 'placeholder',
 };
 
+/** One social-contribution branch of the SASU président payslip. */
+export interface UrssafBranch {
+  label: string;
+  /** Employee share, as a ratio of gross salary. */
+  employee: number;
+  /** Employer share, as a ratio of gross salary. */
+  employer: number;
+  source: string;
+  status: SourcedRateStatus;
+  /** Why the flat ratio above is an approximation, when it is. */
+  note?: string;
+}
+
 /**
- * Hypothèses forfaitaires du modèle pour le président SASU assimilé-salarié.
- * Salariales 21 % du brut, patronales 39 % du brut : coût = 1,39 × brut,
- * soit environ 1,76 × net. Ces agrégats ne sont pas des taux légaux vérifiés ;
- * ils ne modélisent pas les assiettes, plafonds et tranches d'une fiche de paie.
+ * Branch-by-branch build-up for a président de SASU (assimilé-salarié), 2026.
+ *
+ * Each line carries its own source. The aggregate below is still an
+ * approximation, not a payslip: every rate is applied flat to the whole gross
+ * salary, so the plafond de la sécurité sociale (tranche 1 / tranche 2), the
+ * réduction générale de cotisations patronales, and the CSG/CRDS abattement
+ * cap at 4 PASS are all ignored. A président is not affiliated to
+ * l'assurance chômage, so no unemployment contribution appears here.
+ */
+export const URSSAF_BRANCHES_2026: readonly UrssafBranch[] = [
+  {
+    label: 'Maladie, maternité, invalidité, décès',
+    employee: 0,
+    employer: 0.13,
+    source:
+      'CSS art. D242-3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036679615',
+    status: 'verified',
+    note: 'Taux réduit à 7 % pour les rémunérations ≤ 2,5 SMIC (CSS art. L241-2-1), non modélisé.',
+  },
+  {
+    label: 'Vieillesse plafonnée',
+    employee: 0.069,
+    employer: 0.0855,
+    source:
+      'CSS art. D242-4 (décret n° 2025-1446 du 31/12/2025) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053302465',
+    status: 'verified',
+    note: 'Due seulement sur la part du brut sous le plafond de la sécurité sociale ; appliquée ici à la totalité.',
+  },
+  {
+    label: 'Vieillesse déplafonnée',
+    employee: 0.004,
+    employer: 0.0211,
+    source:
+      'CSS art. D242-4 (décret n° 2025-1446 du 31/12/2025) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053302465',
+    status: 'verified',
+  },
+  {
+    label: 'Allocations familiales',
+    employee: 0,
+    employer: 0.0525,
+    source:
+      'CSS art. D241-3-1 (décret n° 2025-887 du 04/09/2025) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000052196883',
+    status: 'verified',
+    note: 'Taux réduit à 3,45 % sous 3,5 SMIC (CSS art. L241-6), non modélisé.',
+  },
+  {
+    label: 'CSG + CRDS (sur 98,25 % du brut)',
+    // 9,20 % + 0,50 % appliqués après abattement de 1,75 % pour frais professionnels.
+    employee: (0.092 + 0.005) * 0.9825,
+    employer: 0,
+    source:
+      'CSS art. L136-8 I-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054336623 ; CRDS : ordonnance n° 96-50 du 24/01/1996 art. 19',
+    status: 'verified',
+    note: "L'abattement d'assiette cesse au-delà de 4 plafonds ; non modélisé.",
+  },
+  {
+    label: 'Retraite complémentaire AGIRC-ARRCO + CEG (tranche 1)',
+    employee: 0.0315 + 0.0086,
+    employer: 0.0472 + 0.0129,
+    source:
+      'ANI du 17/11/2017 (barème AGIRC-ARRCO) — accord conventionnel, hors Légifrance',
+    status: 'assumed',
+    note: 'Barème tranche 1 uniquement ; la tranche 2 (au-delà du plafond) est plus chère.',
+  },
+  {
+    label: 'FNAL + contribution solidarité autonomie',
+    employee: 0,
+    employer: 0.001 + 0.003,
+    source:
+      'CSS art. L834-1 (FNAL, 0,10 % < 50 salariés) ; CASF art. L14-10-4 (CSA 0,30 %)',
+    status: 'assumed',
+  },
+  {
+    label: 'Accidents du travail / maladies professionnelles',
+    employee: 0,
+    employer: 0.02,
+    source:
+      'Taux notifié par la CARSAT selon le code risque de l’entreprise (CSS art. D242-6-2) — aucun taux universel',
+    status: 'placeholder',
+    note: 'Valeur de substitution : le taux réel dépend de l’activité et de la sinistralité.',
+  },
+];
+
+const sumBranches = (side: 'employee' | 'employer'): number =>
+  Number(URSSAF_BRANCHES_2026.reduce((total, b) => total + b[side], 0).toFixed(4));
+
+const BRANCH_SOURCE =
+  'Somme de URSSAF_BRANCHES_2026 (voir chaque branche pour sa source) — approximation à taux plats : ni plafond, ni réduction générale, ni tranche 2.';
+
+/**
+ * Aggregated contribution rates on the gross salary, derived from the branch
+ * table so the figure can be traced line by line. `assumed`, not `verified`:
+ * the individual rates are sourced but their flat summation is a model choice.
  */
 export const URSSAF_EMPLOYEE_RATE_2026: SourcedRate = {
-  value: 0.21,
+  value: sumBranches('employee'),
   unit: 'ratio',
-  source:
-    'Hypothèse de simulation : cotisations salariales agrégées à 21 % du brut, non vérifiées ; ne remplace pas un calcul de paie URSSAF.',
-  asOf: '2026-09-17',
-  status: 'placeholder',
+  source: BRANCH_SOURCE,
+  asOf: '2026-09-19',
+  status: 'assumed',
 };
 
 export const URSSAF_EMPLOYER_RATE_2026: SourcedRate = {
-  value: 0.39,
+  value: sumBranches('employer'),
   unit: 'ratio',
-  source:
-    'Hypothèse de simulation : cotisations patronales agrégées à 39 % du brut, non vérifiées ; ne remplace pas un calcul de paie URSSAF.',
-  asOf: '2026-09-17',
-  status: 'placeholder',
+  source: BRANCH_SOURCE,
+  asOf: '2026-09-19',
+  status: 'assumed',
 };
 
 /**

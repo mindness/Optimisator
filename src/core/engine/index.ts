@@ -33,9 +33,11 @@ export {
   PFU_IR_RATE,
   PFU_PS_RATE,
   PFU_TOTAL_RATE,
+  URSSAF_BRANCHES_2026,
   URSSAF_EMPLOYEE_RATE_2026,
   URSSAF_EMPLOYER_RATE_2026,
   VAT_STANDARD,
+  type UrssafBranch,
 } from './taxRules';
 
 export {

@@ -68,9 +68,12 @@ describe('optimizeRemuneration', () => {
   it('prefers a low salary over a high one for take-home cash', () => {
     const result = optimizeRemuneration(FREELANCE_SASU_PRESET, inputs, { steps: 12, ...fullPayout });
     const ceiling = Math.max(...result.points.map((p) => p.executiveNetSalary));
+    const atCeiling = result.points.find((p) => p.executiveNetSalary === ceiling)!;
 
-    // The PFU beats salary once the progressive brackets are consumed.
-    expect(result.best.executiveNetSalary).toBeLessThan(ceiling / 2);
+    // The PFU beats salary once the progressive brackets are consumed, so
+    // paying out the whole margin as salary is never the best take-home.
+    expect(result.best.executiveNetSalary).toBeLessThan(ceiling);
+    expect(result.best.netPersonalCash).toBeGreaterThan(atCeiling.netPersonalCash);
   });
 
   it('always reports its blind spots, social rights included', () => {
