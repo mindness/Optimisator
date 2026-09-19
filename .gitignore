@@ -45,3 +45,6 @@ Thumbs.db
 **/*.md
 .agentforge/runs/
 .agentforge/curate/
+
+# Playwright MCP artifacts
+.playwright-mcp/

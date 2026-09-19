@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 
 import { FlowCanvas } from '@/components/canvas/FlowCanvas';
 import { DisclaimerBanner } from '@/components/common/DisclaimerBanner';
 import { MetricBadge } from '@/components/common/MetricBadge';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { FlowInspector } from '@/components/inspector/FlowInspector';
-import { ScenarioWorkspace } from '@/components/controls/ScenarioWorkspace';
+const ScenarioWorkspace = lazy(() =>
+  import('@/components/controls/ScenarioWorkspace').then((m) => ({ default: m.ScenarioWorkspace })),
+);
 import {
   LayerSwitcher,
   MoneyTracer,
@@ -13,9 +15,9 @@ import {
   TimelineBar,
   WhatIfSliders,
 } from '@/components/controls';
-import { KbisPreview } from '@/previews/KbisPreview';
-import { LiassePreview } from '@/previews/LiassePreview';
-import { TicketPreview } from '@/previews/TicketPreview';
+const KbisPreview = lazy(() => import('@/previews/KbisPreview').then((m) => ({ default: m.KbisPreview })));
+const LiassePreview = lazy(() => import('@/previews/LiassePreview').then((m) => ({ default: m.LiassePreview })));
+const TicketPreview = lazy(() => import('@/previews/TicketPreview').then((m) => ({ default: m.TicketPreview })));
 import {
   FREELANCE_SASU_PRESET,
   FULL_GROUP_PRESET,
@@ -115,7 +117,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-canvas" data-boot={bootStatus}>
+    <div className="app-shell flex min-h-dvh flex-col bg-canvas lg:h-dvh lg:overflow-hidden" data-boot={bootStatus}>
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-4 py-3">
         <div>
           <h1 className="m-0 text-xl font-semibold tracking-tight text-fg">
@@ -168,7 +170,7 @@ export default function App() {
         />
       )}
 
-      <nav className="flex shrink-0 gap-2 border-b border-border bg-surface p-2" aria-label="Vues du simulateur">
+      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface px-4 py-1" aria-label="Vues du simulateur">
         {([
           [null, 'Simulation'],
           ['architecture', 'Architecture'],
@@ -178,23 +180,27 @@ export default function App() {
         ] as const).map(([id, label]) => (
           <button key={label} type="button" onClick={() => setPreviewId(id)}
             aria-pressed={previewId === id}
-            className="min-h-11 border border-border bg-canvas px-3 text-sm text-fg hover:border-border-strong">
+            className="view-tab min-h-11 shrink-0 border border-transparent px-3 text-sm text-fg-muted hover:text-fg">
             {label}
           </button>
         ))}
       </nav>
       {previewId === 'architecture' && (
-        <ScenarioWorkspace initialScenario={simulation.scenario} whatIf={simulation.whatIf}
-          onApply={(scenario) => { simulation.setScenario(scenario); setPreviewId(null); }} />
+        <Suspense fallback={<p className="p-3 text-sm text-fg-muted" role="status">Chargement de l’atelier…</p>}>
+          <ScenarioWorkspace initialScenario={simulation.scenario} whatIf={simulation.whatIf}
+            onApply={(scenario) => { simulation.setScenario(scenario); setPreviewId(null); }} />
+        </Suspense>
       )}
       {previewId && previewId !== 'architecture' && (
         <div className="min-h-0 flex-1 overflow-auto">
           <p className="m-0 border-b border-border bg-surface p-3 text-sm text-fg-muted">
             Maquette visuelle avec données fictives — aucun document officiel ni résultat de simulation.
           </p>
-          {previewId === 'kbis' && <KbisPreview />}
-          {previewId === 'liasse' && <LiassePreview />}
-          {previewId === 'ticket' && <TicketPreview />}
+          <Suspense fallback={<p className="p-3 text-sm text-fg-muted" role="status">Chargement…</p>}>
+            {previewId === 'kbis' && <KbisPreview />}
+            {previewId === 'liasse' && <LiassePreview />}
+            {previewId === 'ticket' && <TicketPreview />}
+          </Suspense>
         </div>
       )}
 
