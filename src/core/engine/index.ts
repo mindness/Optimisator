@@ -51,6 +51,14 @@ export {
 } from './graphResolver';
 
 export {
+  FORECAST_BLIND_SPOTS,
+  forecastScenario,
+  type ForecastOptions,
+  type ForecastResult,
+  type ForecastYear,
+} from './forecast';
+
+export {
   DEFAULT_PAYOUT_RATIOS,
   OPTIMIZER_BLIND_SPOTS,
   optimizeRemuneration,
