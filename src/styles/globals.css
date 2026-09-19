@@ -121,8 +121,127 @@
   border-radius: 0;
 }
 
+/* Interaction feedback stays quiet: no entrance choreography on the workspace. */
+.app-shell {
+  --feedback-duration: 140ms;
+  --feedback-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-color: var(--border-strong) var(--canvas);
+  scrollbar-width: thin;
+}
+
+.app-shell :where(button, select, input:not([type="range"])) {
+  transition: border-color var(--feedback-duration) var(--feedback-easing),
+    background-color var(--feedback-duration) var(--feedback-easing),
+    color var(--feedback-duration) var(--feedback-easing);
+}
+
+.app-shell :where(button, summary, select) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell button:enabled {
+  cursor: pointer;
+}
+
+.app-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.app-shell input {
+  caret-color: var(--focus-ring);
+}
+
+.view-tab[aria-pressed="true"] {
+  border-bottom-color: var(--focus-ring);
+  background: color-mix(in srgb, var(--focus-ring) 7%, var(--surface));
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.view-tab:hover {
+  background: color-mix(in srgb, var(--fg) 4%, var(--surface));
+}
+
+/* Unboxed ledger rows inside entity nodes; currency remains a single unit. */
+[data-entity-type] .metric-badge {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border: 0;
+  padding-inline: 0;
+  column-gap: 0.75rem;
+}
+
+[data-testid="what-if-sliders"] .metric-badge {
+  border: 0;
+  padding: 0;
+}
+
+[data-testid="what-if-sliders"] input[type="range"] {
+  min-height: 1.75rem;
+  cursor: pointer;
+}
+
+[data-testid="timeline-bar"] button {
+  min-height: 2rem;
+}
+
+[data-testid="flow-inspector"] {
+  animation: inspector-arrive 220ms var(--feedback-easing);
+  overflow-wrap: anywhere;
+}
+
+/* State changes, not page-load choreography: each motion follows an action. */
+.share-backdrop {
+  animation: feedback-appear 160ms ease-out;
+}
+
+.share-backdrop [role="dialog"] {
+  animation: dialog-arrive 240ms var(--feedback-easing);
+}
+
+.view-tab[aria-pressed="true"] {
+  animation: feedback-appear 160ms ease-out;
+}
+
+[data-testid="money-tracer-status"] {
+  animation: trace-confirm 320ms var(--feedback-easing);
+}
+
+@keyframes inspector-arrive {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes dialog-arrive {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes feedback-appear {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+
+@keyframes trace-confirm {
+  from { opacity: 0.5; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flow-edge-particle {
     display: none;
+  }
+
+  .app-shell {
+    --feedback-duration: 0ms;
+  }
+
+  [data-testid="flow-inspector"],
+  .share-backdrop,
+  .share-backdrop [role="dialog"],
+  .view-tab[aria-pressed="true"],
+  [data-testid="money-tracer-status"] {
+    animation: none;
   }
 }

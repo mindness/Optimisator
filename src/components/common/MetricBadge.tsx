@@ -49,14 +49,14 @@ export function MetricBadge({
 
   return (
     <span
-      className={`inline-flex items-baseline gap-1.5 border border-border px-2 py-0.5 text-sm ${className}`.trim()}
+      className={`metric-badge inline-flex max-w-full items-baseline gap-1.5 border border-border px-2 py-0.5 text-sm ${className}`.trim()}
     >
       {label ? (
         <span className="font-sans text-xs font-medium uppercase tracking-wide text-fg-muted">
           {label}
         </span>
       ) : null}
-      <span className={`font-amount ${toneClass[tone]}`}>{formatted}</span>
+      <span className={`font-amount shrink-0 whitespace-nowrap ${toneClass[tone]}`}>{formatted}</span>
     </span>
   );
 }
