@@ -49,6 +49,16 @@ export {
 } from './graphResolver';
 
 export {
+  DEFAULT_PAYOUT_RATIOS,
+  OPTIMIZER_BLIND_SPOTS,
+  optimizeRemuneration,
+  type OptimizationObjective,
+  type OptimizationPoint,
+  type OptimizationResult,
+  type OptimizeOptions,
+} from './optimizer';
+
+export {
   TIMELINE_STEPS,
   getTimelineSteps,
   timelineStepIdForCategory,

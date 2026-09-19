@@ -15,6 +15,9 @@ import {
   TimelineBar,
   WhatIfSliders,
 } from '@/components/controls';
+const Optimizer = lazy(() =>
+  import('@/components/controls/Optimizer').then((m) => ({ default: m.Optimizer })),
+);
 const KbisPreview = lazy(() => import('@/previews/KbisPreview').then((m) => ({ default: m.KbisPreview })));
 const LiassePreview = lazy(() => import('@/previews/LiassePreview').then((m) => ({ default: m.LiassePreview })));
 const TicketPreview = lazy(() => import('@/previews/TicketPreview').then((m) => ({ default: m.TicketPreview })));
@@ -174,6 +177,7 @@ export default function App() {
         {([
           [null, 'Simulation'],
           ['architecture', 'Architecture'],
+          ['optimisation', 'Optimisation'],
           ['kbis', 'Kbis'],
           ['liasse', 'Liasse'],
           ['ticket', 'Ticket'],
@@ -191,7 +195,22 @@ export default function App() {
             onApply={(scenario) => { simulation.setScenario(scenario); setPreviewId(null); }} />
         </Suspense>
       )}
-      {previewId && previewId !== 'architecture' && (
+      {previewId === 'optimisation' && (
+        <Suspense fallback={<p className="p-3 text-sm text-fg-muted" role="status">Chargement du balayage…</p>}>
+          <Optimizer
+            scenario={simulation.scenario}
+            whatIf={simulation.whatIf}
+            onApply={(point) => {
+              simulation.setWhatIf({
+                executiveNetSalary: point.executiveNetSalary,
+                dividendAmount: point.dividendGross,
+              });
+              setPreviewId(null);
+            }}
+          />
+        </Suspense>
+      )}
+      {previewId && previewId !== 'architecture' && previewId !== 'optimisation' && (
         <div className="min-h-0 flex-1 overflow-auto">
           <p className="m-0 border-b border-border bg-surface p-3 text-sm text-fg-muted">
             Maquette visuelle avec données fictives — aucun document officiel ni résultat de simulation.
