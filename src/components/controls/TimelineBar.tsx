@@ -88,8 +88,8 @@ export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
         aria-label="Progression timeline"
       >
         <div
-          className="h-full bg-flow-vat transition-[width] duration-300 ease-out"
-          style={{ width: `${progress * 100}%` }}
+          className="h-full origin-left bg-flow-vat transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: `scaleX(${progress})` }}
         />
       </div>
 
@@ -104,7 +104,7 @@ export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
                 aria-current={active ? 'step' : undefined}
                 aria-label={`Aller à ${step.label}`}
                 className={[
-                  'border px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide',
+                  'border px-2 py-0.5 text-xs font-medium uppercase tracking-wide',
                   active
                     ? 'border-flow-vat bg-flow-vat/15 text-fg'
                     : 'border-border bg-canvas text-fg-muted hover:border-border-strong hover:text-fg',

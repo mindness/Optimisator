@@ -26,7 +26,7 @@ export function LayerSwitcher({
       className={`m-0 border-0 p-0 ${className}`.trim()}
       data-testid="layer-switcher"
     >
-      <legend className="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-fg-muted">
+      <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-fg-muted">
         Calques
       </legend>
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Calques thématiques">

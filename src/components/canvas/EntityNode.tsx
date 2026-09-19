@@ -76,7 +76,7 @@ export function EntityNodeShell({
       <header className="mb-2">
         <h3 className="m-0 text-sm font-semibold leading-tight text-fg">{data.label}</h3>
         {subtitle ? (
-          <p className="m-0 mt-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-fg-muted">
+          <p className="m-0 mt-0.5 text-xs font-medium uppercase tracking-wide text-fg-muted">
             {subtitle}
           </p>
         ) : null}

@@ -98,14 +98,14 @@ export function WhatIfSliders({
       aria-label="Curseurs What-If"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="m-0 text-[0.65rem] font-semibold uppercase tracking-wide text-fg-muted">
+        <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
           What-If
         </h2>
         {onReset ? (
           <button
             type="button"
             onClick={onReset}
-            className="border border-border px-2 py-0.5 text-[0.65rem] text-fg-muted hover:border-border-strong hover:text-fg"
+            className="border border-border px-2 py-0.5 text-xs text-fg-muted hover:border-border-strong hover:text-fg"
           >
             Réinitialiser
           </button>

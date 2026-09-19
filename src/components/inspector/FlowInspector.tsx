@@ -48,7 +48,7 @@ export function FlowInspector({
     >
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="m-0 text-[0.65rem] font-semibold uppercase tracking-wide text-fg-muted">
+          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
             Inspecteur
           </p>
           <h2 className="m-0 mt-0.5 truncate text-base font-semibold text-fg">

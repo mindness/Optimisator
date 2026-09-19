@@ -143,7 +143,7 @@ export function StepBreakdown({
       data-testid="step-breakdown"
       aria-label="Décomposition du calcul"
     >
-      <h3 className="m-0 text-[0.65rem] font-semibold uppercase tracking-wide text-fg-muted">
+      <h3 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
         Calcul pas à pas
       </h3>
       <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
@@ -160,7 +160,7 @@ export function StepBreakdown({
                 {step.label}
               </span>
               {step.formula ? (
-                <p className="m-0 mt-0.5 font-mono text-[0.65rem] text-fg-muted">
+                <p className="m-0 mt-0.5 font-mono text-xs text-fg-muted">
                   {step.formula}
                 </p>
               ) : null}

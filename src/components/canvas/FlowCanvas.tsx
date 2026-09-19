@@ -229,7 +229,6 @@ function FlowCanvasInner({
         maxZoom={1.75}
         panOnScroll
         zoomOnScroll
-        proOptions={{ hideAttribution: true }}
         onEdgeClick={(_event, edge) => {
           // Ownership links are legal markers, not selectable monetary flows.
           if (edge.type === 'flow' && edge.data && onFlowSelect) {

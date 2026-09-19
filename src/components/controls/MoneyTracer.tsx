@@ -30,7 +30,7 @@ export function MoneyTracer({
       data-testid="money-tracer"
       aria-label="Money Tracer"
     >
-      <h2 className="m-0 text-[0.65rem] font-semibold uppercase tracking-wide text-fg-muted">
+      <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
         Money Tracer
       </h2>
       <p className="m-0 text-xs text-fg-muted">

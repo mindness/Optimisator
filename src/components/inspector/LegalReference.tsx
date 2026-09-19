@@ -23,7 +23,7 @@ function AlertBadge({ alert }: { alert: LegalAlert }) {
 
   return (
     <span
-      className={`inline-flex items-center border px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${tone}`}
+      className={`inline-flex items-center border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${tone}`}
       data-testid={`alert-badge-${alert.code}`}
       title={alert.detail}
     >
@@ -37,7 +37,7 @@ function ArticleBlock({ article }: { article: LegalArticle }) {
     <article className="border border-border bg-canvas px-2.5 py-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="m-0 text-sm font-semibold text-fg">{article.ref}</h4>
-        <span className="text-[0.65rem] uppercase tracking-wide text-fg-muted">
+        <span className="text-xs uppercase tracking-wide text-fg-muted">
           {STATUS_LABEL[article.status]} · {article.asOf}
         </span>
       </div>
@@ -91,7 +91,7 @@ export function LegalReference({ flow, className = '' }: LegalReferenceProps) {
       data-testid="legal-reference"
       aria-label="Références légales"
     >
-      <h3 className="m-0 text-[0.65rem] font-semibold uppercase tracking-wide text-fg-muted">
+      <h3 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
         Références légales
       </h3>
 

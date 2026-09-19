@@ -199,7 +199,7 @@ export function FlowEdge({
             data.onSelect(flowDataFromPayload(data));
           }}
         >
-          <span className="block text-[0.6rem] font-medium uppercase tracking-wide text-fg-muted">
+          <span className="block text-xs font-medium uppercase tracking-wide text-fg-muted">
             {data?.label ?? 'Flux'}
           </span>
           <span className="font-amount text-xs" style={{ color: stroke }}>
