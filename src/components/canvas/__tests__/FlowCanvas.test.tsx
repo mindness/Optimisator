@@ -4,9 +4,10 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import { FlowCanvas, flowsToEdges, layoutPresetNodes, mergeNodePositions } from '../FlowCanvas';
+import { DEFAULT_NODE_HEIGHT, FlowCanvas, NODE_HEIGHT, NODE_WIDTH, flowsToEdges, layoutPresetNodes, mergeNodePositions } from '../FlowCanvas';
+import { STRUCTURE_PRESETS } from '@/core/presets';
 import { FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET } from '@/core/presets';
-import { particleDurationSeconds } from '../FlowEdge';
+import { flowCycleSeconds } from '../FlowEdge';
 
 beforeAll(() => {
   class ResizeObserverStub {
@@ -25,13 +26,13 @@ afterEach(() => {
   cleanup();
 });
 
-describe('particleDurationSeconds', () => {
-  it('clamps cycle duration between 1.5s and 6s from log10(amount)', () => {
-    expect(particleDurationSeconds(0)).toBe(1.5);
-    // log10(10)=1 → clamped to floor 1.5
-    expect(particleDurationSeconds(9)).toBe(1.5);
-    expect(particleDurationSeconds(99)).toBeCloseTo(Math.log10(100), 5);
-    expect(particleDurationSeconds(1_000_000)).toBe(6);
+describe('flowCycleSeconds', () => {
+  it('speeds the dash up with the amount, with a 0.6s floor', () => {
+    expect(flowCycleSeconds(0)).toBe(2.4);
+    // log10(100)=2 → 2.4 - 0.6
+    expect(flowCycleSeconds(99)).toBeCloseTo(1.8, 5);
+    expect(flowCycleSeconds(1_000_000)).toBe(0.6);
+    expect(flowCycleSeconds(-1_000_000_000)).toBe(0.6);
   });
 });
 
@@ -86,5 +87,27 @@ describe('mergeNodePositions', () => {
     const merged = mergeNodePositions(layoutB, dragged);
     expect(merged.map((n) => n.id)).toEqual(layoutB.map((n) => n.id));
     expect(merged[0]?.position).toEqual(layoutB[0]?.position);
+  });
+});
+
+describe('layoutPresetNodes', () => {
+  it('never overlaps two cards, on every preset', () => {
+    for (const preset of STRUCTURE_PRESETS) {
+      const boxes = layoutPresetNodes(preset.entities, preset.flows).map((node, index) => ({
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
+        w: NODE_WIDTH,
+        h: NODE_HEIGHT[preset.entities[index]!.entityType] ?? DEFAULT_NODE_HEIGHT,
+      }));
+      for (let i = 0; i < boxes.length; i += 1) {
+        for (let j = i + 1; j < boxes.length; j += 1) {
+          const a = boxes[i]!;
+          const b = boxes[j]!;
+          const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+          expect(`${preset.id} ${a.id}/${b.id}: ${overlap}`).toBe(`${preset.id} ${a.id}/${b.id}: false`);
+        }
+      }
+    }
   });
 });

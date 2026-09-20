@@ -1,7 +1,7 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { ReactNode } from 'react';
 
-import type { EntityNodeData, EntityType } from '@/core/types';
+import { ENTITY_TYPE_LABELS, type EntityNodeData, type EntityType } from '@/core/types';
 
 /** xyflow requires node `data` to extend Record<string, unknown>. */
 export type EntityNodePayload = EntityNodeData & Record<string, unknown>;
@@ -96,6 +96,6 @@ export function EntityNodeShell({
 /** Fallback / generic entity node (clients, vendors, banks). */
 export function EntityNode({ data, selected }: NodeProps<EntityFlowNode>) {
   return (
-    <EntityNodeShell data={data} selected={selected} subtitle={data.entityType} />
+    <EntityNodeShell data={data} selected={selected} subtitle={ENTITY_TYPE_LABELS[data.entityType]} />
   );
 }

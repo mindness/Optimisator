@@ -14,7 +14,7 @@
           "label": "Conditions du régime des sociétés mères",
           "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051203497",
           "status": "verified",
-          "asOf": "2026-09-07",
+          "asOf": "2026-09-19",
           "summary": "Titres représentant au moins 5 % du capital (appréciation à la date de mise en paiement). Conservation 2 ans ou engagement."
         },
         {
@@ -22,7 +22,7 @@
           "label": "Quote-part de frais et charges",
           "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048831340",
           "status": "verified",
-          "asOf": "2026-09-07",
+          "asOf": "2026-09-19",
           "summary": "QPFC réintégrée = 5 % du produit total des participations. Frottement IS effectif ≈ 1,25 % si taux holding 25 %."
         }
       ],
@@ -92,7 +92,7 @@
           "label": "PFU — taux IR 12,8 %",
           "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053546896",
           "status": "verified",
-          "asOf": "2026-09-07",
+          "asOf": "2026-09-19",
           "summary": "Taux forfaitaire IR sur revenus de capitaux mobiliers, sauf option globale pour le barème."
         }
       ],

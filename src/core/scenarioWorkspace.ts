@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { scenarioStateSchema, type ScenarioState, type EntityType, type EntityNodeData, type FlowEdgeData } from './types';
-import type { WhatIfInputs } from './engine';
+import { ENTITY_TYPE_LABELS, scenarioStateSchema, type ScenarioState, type EntityType, type EntityNodeData, type FlowCategory, type FlowEdgeData } from './types';
+import { calculateFlatTax, calculateMotherDaughterDividend, MOTHER_DAUGHTER_MIN_HOLDING_PCT, type WhatIfInputs } from './engine';
 
 export const WORKSPACE_KEY = 'optimisator.workspace.v1';
 const workspaceSchema = z.object({ version: z.literal(1), draft: scenarioStateSchema, baseline: scenarioStateSchema.nullable() });
@@ -92,6 +92,101 @@ export function updateWorkspaceEntity(scenario: ScenarioState, id: string, patch
   return { ...scenario, entities, flows };
 }
 
+/** Trajets calculables par le moteur : catégorie → couples `source:cible`. */
+export const FLOW_ROUTES: Partial<Record<FlowCategory, string[]>> = {
+  revenue: ['client:sasu'], expense: ['sasu:vendor'], salary: ['sasu:person'], social_charges: ['sasu:urssaf'],
+  vat: ['sasu:tax_authority'], is_tax: ['sasu:tax_authority', 'holding_sas:tax_authority', 'sci_is:tax_authority'],
+  rent: ['sasu:sci_is'], dividend: ['sasu:person', 'sasu:holding_sas', 'holding_sas:person'],
+};
+
+/** Types que le moteur sait chiffrer : dérivé des trajets, jamais listé à la main. */
+export const ENGINE_COVERED_TYPES: ReadonlySet<EntityType> = new Set(
+  Object.values(FLOW_ROUTES).flat().flatMap((route) => route.split(':') as EntityType[]),
+);
+
+/** Pourquoi une brique reste un dessin, en une phrase affichable. */
+export const OUT_OF_ENGINE_REASON: Partial<Record<EntityType, string>> = {
+  eurl: 'Gérant TNS : cotisations SSI et règle des 10 % du capital chiffrées dans le comparateur de structures, pas sur le canvas.',
+  sarl: 'Gérant majoritaire TNS : cotisations SSI et règle des 10 % du capital chiffrées dans le comparateur de structures, pas sur le canvas.',
+  holding_sarl: 'Holding SARL : le moteur ne chiffre que la holding SAS.',
+  sci_ir: 'SCI à l’IR : résultat foncier imposé chez l’associé — chiffré dans le comparateur de structures, pas encore sur le canvas.',
+  micro_entreprise: 'Micro-entreprise : abattement forfaitaire et cotisations sur le CA — chiffrée dans le comparateur de structures, pas sur le canvas.',
+  entreprise_individuelle: 'Entreprise individuelle : bénéfice imposé à l’IR et cotisations SSI — chiffrée dans le comparateur de structures, pas sur le canvas.',
+  bank: 'Emprunts et flux bancaires affichés mais hors calcul.',
+};
+
+const CATEGORY_LAYER: Partial<Record<FlowCategory, FlowEdgeData['layer']>> = {
+  revenue: 'treasury', expense: 'treasury', rent: 'treasury',
+  salary: 'social', social_charges: 'social', vat: 'vat', is_tax: 'tax', dividend: 'tax',
+};
+const CATEGORY_LABEL: Partial<Record<FlowCategory, string>> = {
+  revenue: 'Chiffre d’affaires', expense: 'Charges', salary: 'Rémunération', social_charges: 'Cotisations URSSAF',
+  vat: 'TVA nette', is_tax: 'Impôt sur les sociétés', rent: 'Loyer', dividend: 'Dividendes',
+};
+
+/**
+ * Régime applicable au tracé source → cible : catégorie proposée à la création,
+ * puis taux et note légale affichés dans l'éditeur de flux.
+ * Le taux vient des calculateurs du moteur, jamais d'une constante recopiée.
+ */
+export type FlowAdvice = {
+  category: FlowCategory;
+  label: string;
+  layer: FlowEdgeData['layer'];
+  legalNoteId?: string;
+  /** Nom du régime, vide si le trajet n'en déclenche aucun. */
+  regime?: string;
+  /** Taux effectif de friction fiscale sur ce flux (0–1). */
+  rate?: number;
+  tax?: number;
+  warning?: string;
+};
+
+export function adviseFlow(
+  scenario: ScenarioState,
+  link: { sourceId: string; targetId: string; category?: FlowCategory; amount?: number },
+): FlowAdvice | null {
+  const source = scenario.entities.find((entity) => entity.id === link.sourceId);
+  const target = scenario.entities.find((entity) => entity.id === link.targetId);
+  if (!source || !target) return null;
+  const route = `${source.entityType}:${target.entityType}`;
+  const category = link.category
+    ?? (Object.keys(FLOW_ROUTES) as FlowCategory[]).find((key) => FLOW_ROUTES[key]!.includes(route));
+  if (!category) return null;
+
+  const advice: FlowAdvice = {
+    category,
+    label: CATEGORY_LABEL[category] ?? 'Flux à configurer',
+    layer: CATEGORY_LAYER[category] ?? 'treasury',
+  };
+  if (category !== 'dividend' || !FLOW_ROUTES.dividend!.includes(route)) return advice;
+
+  const amount = link.amount ?? 0;
+  // Taux effectif dérivé sur 10 000 € quand le montant est encore nul : sinon 0/0.
+  const probe = 10_000;
+  if (target.entityType === 'holding_sas') {
+    advice.regime = 'Régime mère-fille (CGI art. 145 / 216)';
+    advice.label = 'Dividendes mère-fille';
+    advice.legalNoteId = 'mere-fille-art-145';
+    advice.rate = calculateMotherDaughterDividend(probe).holdingTax / probe;
+    advice.tax = calculateMotherDaughterDividend(amount).holdingTax;
+    // Même lecture de la détention que le moteur (graphResolver) : lien explicite ou ownershipPercent de la fille.
+    const minPercent = MOTHER_DAUGHTER_MIN_HOLDING_PCT.value * 100;
+    const held = (scenario.ownerships ?? []).some(
+      (own) => own.ownerId === target.id && own.companyId === source.id && own.percent >= minPercent,
+    ) || (source.ownershipPercent ?? 0) >= minPercent;
+    if (!held) {
+      advice.warning = `Régime conditionné à une détention ≥ ${minPercent} % conservée 2 ans : renseignez la détention de la holding dans la SASU.`;
+    }
+  } else {
+    advice.regime = 'Flat tax (PFU)';
+    advice.label = 'Dividendes → PFU dirigeant';
+    advice.rate = calculateFlatTax(probe).totalTax / probe;
+    advice.tax = calculateFlatTax(amount).totalTax;
+  }
+  return advice;
+}
+
 /** Coverage gate, NOT a legal eligibility check. Unsupported drafts remain editable. */
 export function simulationIssues(scenario: ScenarioState): string[] {
   if (!scenarioStateSchema.safeParse(scenario).success) return ['Champs incomplets ou montants non valides.'];
@@ -101,12 +196,12 @@ export function simulationIssues(scenario: ScenarioState): string[] {
   const count = (type: EntityType) => scenario.entities.filter((entity) => entity.entityType === type).length;
   if (count('sasu') !== 1 || count('sci_is') > 1 || count('holding_sas') > 1 || count('holding_sarl') || count('sci_ir')) issues.push('Le moteur couvre une SASU, au plus une holding SAS et une SCI IS. Les autres structures restent des schémas.');
   if (scenario.entities.some((entity) => Object.values(entity.inputs ?? {}).some((value) => !Number.isFinite(value) || value < 0))) issues.push('Les paramètres doivent être des nombres positifs ou nuls.');
+  for (const entity of scenario.entities) {
+    const reason = OUT_OF_ENGINE_REASON[entity.entityType];
+    if (reason) issues.push(`${ENTITY_TYPE_LABELS[entity.entityType]} — ${reason}`);
+  }
   const byId = new Map(scenario.entities.map((entity) => [entity.id, entity.entityType]));
-  const routes: Record<string, string[]> = {
-    revenue: ['client:sasu'], expense: ['sasu:vendor'], salary: ['sasu:person'], social_charges: ['sasu:urssaf'],
-    vat: ['sasu:tax_authority'], is_tax: ['sasu:tax_authority', 'holding_sas:tax_authority', 'sci_is:tax_authority'],
-    rent: ['sasu:sci_is'], dividend: ['sasu:person', 'sasu:holding_sas', 'holding_sas:person'],
-  };
+  const routes = FLOW_ROUTES;
   const seen = new Set<string>();
   for (const flow of scenario.flows) {
     if (!ids.has(flow.sourceId) || !ids.has(flow.targetId) || flow.sourceId === flow.targetId) issues.push('Flux sans source/destination distinctes et existantes.');

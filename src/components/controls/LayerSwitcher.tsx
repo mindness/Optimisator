@@ -1,3 +1,4 @@
+import { VIEW_PRESETS } from '@/core/presets';
 import { FLOW_LAYERS, type FlowLayer } from '@/core/types';
 
 const LAYER_LABELS: Record<FlowLayer, string> = {
@@ -11,12 +12,19 @@ const LAYER_LABELS: Record<FlowLayer, string> = {
 export type LayerSwitcherProps = {
   activeLayers: readonly FlowLayer[];
   onToggle: (layer: FlowLayer) => void;
+  /** Presets de vue 1-clic : absent → seuls les calques sont proposés. */
+  onSelectLayers?: (layers: readonly FlowLayer[]) => void;
   className?: string;
 };
+
+function sameLayers(a: Set<FlowLayer>, b: readonly FlowLayer[]): boolean {
+  return a.size === b.length && b.every((layer) => a.has(layer));
+}
 
 export function LayerSwitcher({
   activeLayers,
   onToggle,
+  onSelectLayers,
   className = '',
 }: LayerSwitcherProps) {
   const active = new Set(activeLayers);
@@ -29,6 +37,36 @@ export function LayerSwitcher({
       <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-fg-muted">
         Calques
       </legend>
+      {onSelectLayers ? (
+        <div
+          className="mb-2 flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Presets de vue"
+          data-testid="view-presets"
+        >
+          {VIEW_PRESETS.map((preset) => {
+            const isOn = sameLayers(active, preset.layers);
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                aria-pressed={isOn}
+                title={preset.description}
+                data-view-preset={preset.id}
+                onClick={() => onSelectLayers(preset.layers)}
+                className={[
+                  'border px-2 py-1 text-xs',
+                  isOn
+                    ? 'border-flow-div bg-flow-div/12 text-fg'
+                    : 'border-border bg-canvas text-fg-muted hover:border-border-strong',
+                ].join(' ')}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Calques thématiques">
         {FLOW_LAYERS.map((layer) => {
           const isOn = active.has(layer);

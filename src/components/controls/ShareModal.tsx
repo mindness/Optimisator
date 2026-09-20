@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { SharePayload } from '@/hooks/useSimulation';
 import {
@@ -113,20 +113,32 @@ export function ShareModal({
     }
   }, [base, payload]);
 
+  // Échap ferme la modale : seule sortie au clavier, le fond n'est pas focusable.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
     <div
       className="share-backdrop fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-4"
       role="presentation"
-      onClick={onClose}
+      onClick={(e) => {
+        // Seul le fond ferme : pas de handler souris sur la boîte de dialogue.
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-modal-title"
         className="w-full max-w-md border border-border bg-surface p-4 text-fg shadow-none"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>

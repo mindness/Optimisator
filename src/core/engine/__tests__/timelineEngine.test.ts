@@ -104,6 +104,9 @@ describe('resolveScenarioGraph — composite mère-fille → PFU chain', () => {
       executiveNetSalary: 0,
       dividendAmount: 50_000,
       holdingDividendAmount: 20_000,
+      // Sans ce choix explicite, l'arbitrage retient le barème : à TMI 0 %,
+      // la part IR du PFU est un coût sec.
+      dividendTaxMode: 'pfu',
     };
     const resolved = resolveScenarioGraph(SASU_HOLDING_PRESET, inputs);
 
@@ -131,6 +134,21 @@ describe('resolveScenarioGraph — composite mère-fille → PFU chain', () => {
     expect(holdingToPerson!.taxResult?.netAmount).toBe(pfu.netIncome);
 
     expect(resolved.summary.netPersonalCash).toBe(pfu.netIncome);
+    expect(resolved.summary.dividendTaxMode).toBe('pfu');
+  });
+
+  it('retient le barème plutôt que le PFU quand la TMI est nulle', () => {
+    const resolved = resolveScenarioGraph(SASU_HOLDING_PRESET, {
+      caHt: 200_000,
+      expensesHt: 40_000,
+      executiveNetSalary: 0,
+      dividendAmount: 50_000,
+      holdingDividendAmount: 20_000,
+    });
+
+    expect(resolved.summary.dividendTaxMode).toBe('bareme');
+    expect(resolved.summary.dividendArbitrage.gain).toBeGreaterThan(0);
+    expect(resolved.summary.personalIncomeTax.marginalRate).toBe(0);
   });
 });
 

@@ -21,6 +21,11 @@ const Optimizer = lazy(() =>
 const Forecast = lazy(() =>
   import('@/components/controls/Forecast').then((m) => ({ default: m.Forecast })),
 );
+const StructureComparator = lazy(() =>
+  import('@/components/controls/StructureComparator').then((m) => ({
+    default: m.StructureComparator,
+  })),
+);
 const KbisPreview = lazy(() => import('@/previews/KbisPreview').then((m) => ({ default: m.KbisPreview })));
 const LiassePreview = lazy(() => import('@/previews/LiassePreview').then((m) => ({ default: m.LiassePreview })));
 const TicketPreview = lazy(() => import('@/previews/TicketPreview').then((m) => ({ default: m.TicketPreview })));
@@ -114,9 +119,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once
   }, []);
 
-  useEffect(() => {
+  // Changer de scénario invalide la sélection : ajusté pendant le rendu, un
+  // effet forcerait un second rendu avec un flux sélectionné devenu fantôme.
+  const [seenScenarioId, setSeenScenarioId] = useState(simulation.scenario.id);
+  if (seenScenarioId !== simulation.scenario.id) {
+    setSeenScenarioId(simulation.scenario.id);
     setSelectedFlowId(null);
-  }, [simulation.scenario.id]);
+  }
 
   const handleFlowSelect = (flow: FlowEdgeData) => {
     setSelectedFlowId(flow.id);
@@ -181,6 +190,7 @@ export default function App() {
           [null, 'Simulation'],
           ['architecture', 'Architecture'],
           ['optimisation', 'Optimisation'],
+          ['structures', 'Structures'],
           ['projection', 'Projection'],
           ['kbis', 'Kbis'],
           ['liasse', 'Liasse'],
@@ -214,12 +224,17 @@ export default function App() {
           />
         </Suspense>
       )}
+      {previewId === 'structures' && (
+        <Suspense fallback={<p className="p-3 text-sm text-fg-muted" role="status">Chargement du comparateur…</p>}>
+          <StructureComparator whatIf={simulation.whatIf} defaults={whatIfDefaults} />
+        </Suspense>
+      )}
       {previewId === 'projection' && (
         <Suspense fallback={<p className="p-3 text-sm text-fg-muted" role="status">Chargement de la projection…</p>}>
           <Forecast scenario={simulation.scenario} whatIf={simulation.whatIf} />
         </Suspense>
       )}
-      {previewId && !['architecture', 'optimisation', 'projection'].includes(previewId) && (
+      {previewId && !['architecture', 'optimisation', 'structures', 'projection'].includes(previewId) && (
         <div className="min-h-0 flex-1 overflow-auto">
           <p className="m-0 border-b border-border bg-surface p-3 text-sm text-fg-muted">
             Maquette visuelle avec données fictives — aucun document officiel ni résultat de simulation.
@@ -238,6 +253,7 @@ export default function App() {
           <LayerSwitcher
             activeLayers={simulation.activeLayers}
             onToggle={simulation.toggleLayer}
+            onSelectLayers={simulation.setActiveLayers}
           />
           <WhatIfSliders
             values={simulation.whatIf}
@@ -245,6 +261,8 @@ export default function App() {
             hasHolding={simulation.scenario.entities.some((entity) =>
               entity.entityType === 'holding_sas' || entity.entityType === 'holding_sarl',
             )}
+            marginalRate={simulation.resolved.summary.personalIncomeTax.marginalRate}
+            appliedDividendMode={simulation.resolved.summary.dividendTaxMode}
             onChange={simulation.setWhatIf}
             onReset={simulation.resetWhatIf}
           />
@@ -276,7 +294,7 @@ export default function App() {
               showOwnership={simulation.activeLayers.includes('legal')}
               selectedFlowId={selectedFlowId}
               onFlowSelect={handleFlowSelect}
-              className="h-full min-h-[28rem] rounded-sm border border-border"
+              className="rounded-sm border border-border"
             />
           </div>
 
@@ -313,6 +331,19 @@ export default function App() {
               amount={simulation.resolved.summary.netPersonalCash}
               label="Cash perso avant IR rémunération"
               tone="div"
+            />
+            <MetricBadge
+              amount={simulation.resolved.summary.personalIncomeTax.marginalRate}
+              label="TMI"
+              tone="social"
+              unit="percent"
+            />
+            <MetricBadge
+              amount={simulation.resolved.summary.personalIncomeTax.averageRate}
+              label="Taux moyen IR"
+              tone="social"
+              unit="percent"
+              fractionDigits={1}
             />
           </div>
         </div>

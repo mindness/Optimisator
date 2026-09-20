@@ -47,21 +47,23 @@ export function useTimeline(
 ): UseTimelineResult {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
   const steps = useMemo(() => getTimelineSteps(scenario), [scenario]);
-  const [stepIndex, setStepIndex] = useState(() =>
+  const [rawIndex, setStepIndex] = useState(() =>
     clampIndex(options.initialIndex ?? 0, steps.length),
   );
-  const [playing, setPlaying] = useState(false);
+  const [rawPlaying, setPlaying] = useState(false);
 
-  // Reset replay when the preset / scenario identity changes.
-  useEffect(() => {
+  // Reset replay when the preset / scenario identity changes — adjusted during
+  // render rather than in an effect, which would cost a second render pass.
+  const [seenScenarioId, setSeenScenarioId] = useState(scenario.id);
+  if (seenScenarioId !== scenario.id) {
+    setSeenScenarioId(scenario.id);
     setStepIndex(0);
     setPlaying(false);
-  }, [scenario.id]);
+  }
 
-  // Keep index valid if step list length changes (e.g. future dynamic timelines).
-  useEffect(() => {
-    setStepIndex((i) => clampIndex(i, steps.length));
-  }, [steps.length]);
+  // Index and playback are derived: a shorter step list re-clamps both without an effect.
+  const stepIndex = clampIndex(rawIndex, steps.length);
+  const playing = rawPlaying && stepIndex < steps.length - 1;
 
   const currentStep = steps[stepIndex] ?? steps[0]!;
 
@@ -117,13 +119,6 @@ export function useTimeline(
 
     return () => window.clearInterval(id);
   }, [playing, intervalMs, steps.length]);
-
-  // Stop playback once the final step is reached.
-  useEffect(() => {
-    if (playing && stepIndex >= steps.length - 1) {
-      setPlaying(false);
-    }
-  }, [playing, stepIndex, steps.length]);
 
   return {
     steps,

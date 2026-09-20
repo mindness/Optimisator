@@ -44,7 +44,7 @@ export type SimulationState = {
   resetWhatIf: () => void;
   /** Apply a share/API payload into the store (scenario + whatIf + layers). */
   hydrateFromShare: (payload: SharePayload) => void;
-  setActiveLayers: (layers: FlowLayer[]) => void;
+  setActiveLayers: (layers: readonly FlowLayer[]) => void;
   toggleLayer: (layer: FlowLayer) => void;
   injectMoneyTrace: (amount: number) => void;
   clearMoneyTrace: () => void;

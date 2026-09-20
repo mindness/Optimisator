@@ -38,18 +38,15 @@ export type ThemeToggleProps = {
 };
 
 export function ThemeToggle({ className = '' }: ThemeToggleProps) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  // Lu au premier rendu : pas d'effet, donc pas de flash de thème par défaut.
+  const [theme, setTheme] = useState<Theme>(resolveInitialTheme);
 
   useEffect(() => {
-    const initial = resolveInitialTheme();
-    setTheme(initial);
-    applyTheme(initial);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   function toggle() {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    applyTheme(next);
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   }
 
   const label =

@@ -14,15 +14,19 @@ import type {
 } from '../types';
 import {
   calculateCorporateTax,
+  calculateDividendTax,
   calculateExecutiveSalary,
-  calculateFlatTax,
   calculateMotherDaughterDividend,
   calculatePersonalIncomeTax,
   calculateSciTax,
   calculateVAT,
+  compareDividendTaxModes,
   roundMoney,
   type CorporateTaxResult,
+  type DividendArbitrage,
+  type DividendTaxMode,
   type ExecutiveSalaryResult,
+  type FiscalSituation,
   type PersonalIncomeTaxResult,
   type VatResult,
 } from './calculator';
@@ -53,6 +57,15 @@ export interface WhatIfInputs {
   holdingDividendAmount?: number;
   /** SCI rent HT billed to OpCo (EUR annual). */
   sciRentHt?: number;
+  /** Parts de quotient familial du foyer (défaut 1). */
+  parts?: number;
+  /** Situation du foyer, qui fixe le seuil de décote (défaut célibataire). */
+  situation?: FiscalSituation;
+  /**
+   * Régime d'imposition des dividendes perçus par la personne physique.
+   * `auto` retient le moins coûteux à la TMI constatée.
+   */
+  dividendTaxMode?: DividendTaxMode | 'auto';
 }
 
 export interface ResolvedFlow extends FlowEdgeData {
@@ -71,8 +84,12 @@ export interface ResolvedScenarioSummary {
   vat: VatResult;
   corporateTax: CorporateTaxResult;
   executiveSalary: ExecutiveSalaryResult;
-  /** IR personnel sur rémunération nette (barème 2026, 1 part). */
+  /** IR personnel sur le net imposable, dividendes au barème inclus le cas échéant. */
   personalIncomeTax: PersonalIncomeTaxResult;
+  /** Comparaison PFU / barème sur les dividendes versés à la personne physique. */
+  dividendArbitrage: DividendArbitrage;
+  /** Régime effectivement appliqué aux dividendes de ce scénario. */
+  dividendTaxMode: DividendTaxMode;
   sciTaxDue: number;
   netGroupCash: number;
   /** Argent net après URSSAF, IS et IR personnel (rémunération + dividendes PFU). */
@@ -213,6 +230,39 @@ export function resolveScenarioGraph(
     if (flow.id === holdingDividendId) return inputs.holdingDividendAmount ?? flow.amount;
     return flow.amount;
   };
+
+  // Dividendes encaissés par une personne physique : ils fixent l'arbitrage
+  // PFU / barème et, sur option barème, remontent la TMI du foyer.
+  const parts = inputs.parts ?? 1;
+  const situation: FiscalSituation = inputs.situation ?? 'single';
+  const personalDividendGross = roundMoney(
+    scenario.flows
+      .filter((flow) =>
+        flow.category === 'dividend' &&
+        findEntity(scenario.entities, flow.targetId)?.entityType === 'person',
+      )
+      .reduce((sum, flow) => sum + dividendAmountFor(flow), 0),
+  );
+  // G3 : l'IR porte sur le net imposable (net + CSG/CRDS non déductibles),
+  // pas sur le net versé.
+  const salaryIncomeTax = calculatePersonalIncomeTax(executiveSalary.netImposable, parts, {
+    situation,
+  });
+  // ponytail: l'arbitrage utilise la TMI hors dividendes ; passer à un point
+  // fixe si un scénario fait basculer la tranche par les dividendes eux-mêmes.
+  const dividendArbitrage = compareDividendTaxModes(
+    personalDividendGross,
+    salaryIncomeTax.marginalRate,
+  );
+  const requestedMode = inputs.dividendTaxMode ?? 'auto';
+  const dividendTaxMode: DividendTaxMode =
+    requestedMode === 'auto' ? dividendArbitrage.best.mode : requestedMode;
+  const personalIncomeTax = dividendTaxMode === 'bareme'
+    ? calculatePersonalIncomeTax(executiveSalary.netImposable, parts, {
+        situation,
+        otherTaxableIncome: dividendArbitrage.bareme.taxableBase,
+      })
+    : salaryIncomeTax;
   const holdingTaxFor = (entityId: string): number => roundMoney(
     scenario.flows.filter((flow) =>
       flow.category === 'dividend' && flow.targetId === entityId &&
@@ -368,7 +418,11 @@ export function resolveScenarioGraph(
         const toPerson = target?.entityType === 'person';
         const grossDividend = dividendAmountFor(flow);
         const mereFille = calculateMotherDaughterDividend(grossDividend);
-        const pfu = calculateFlatTax(grossDividend);
+        const personalDividend = calculateDividendTax(
+          grossDividend,
+          dividendTaxMode,
+          salaryIncomeTax.marginalRate,
+        );
 
         if (fromSasu && toHolding) {
           // Flat holdingTaxRate path (see file-level comment).
@@ -391,13 +445,9 @@ export function resolveScenarioGraph(
             flowId: flow.id,
             category: 'dividend',
             grossAmount: grossDividend,
-            taxAmount: pfu.totalTax,
-            netAmount: pfu.netIncome,
-            breakdown: [
-              line('PFU IR 12,8 %', pfu.irPart),
-              line('PFU PS', pfu.psPart),
-              line('PFU total', pfu.totalTax),
-            ],
+            taxAmount: personalDividend.totalTax,
+            netAmount: personalDividend.netIncome,
+            breakdown: personalDividend.breakdown,
           });
         } else if (fromSasu && toPerson) {
           resolvedAmount = grossDividend;
@@ -405,13 +455,9 @@ export function resolveScenarioGraph(
             flowId: flow.id,
             category: 'dividend',
             grossAmount: grossDividend,
-            taxAmount: pfu.totalTax,
-            netAmount: pfu.netIncome,
-            breakdown: [
-              line('PFU IR 12,8 %', pfu.irPart),
-              line('PFU PS', pfu.psPart),
-              line('PFU total', pfu.totalTax),
-            ],
+            taxAmount: personalDividend.totalTax,
+            netAmount: personalDividend.netIncome,
+            breakdown: personalDividend.breakdown,
           });
         } else {
           resolvedAmount = flow.amount;
@@ -467,11 +513,12 @@ export function resolveScenarioGraph(
       const received = roundMoney(resolvedFlows.filter((flow) =>
         flow.targetId === entity.id && (flow.category === 'salary' || flow.category === 'dividend'),
       ).reduce((sum, flow) => sum + (flow.taxResult?.netAmount ?? flow.resolvedAmount), 0));
-      // IR on net salary (barème 2026, 1 part) applies to the salary portion only.
+      // IR de la rémunération : assis sur le net imposable, foyer paramétré.
+      // Les dividendes portent leur propre imposition dans le flux.
       const salaryNet = roundMoney(resolvedFlows.filter((flow) =>
         flow.targetId === entity.id && flow.category === 'salary',
       ).reduce((sum, flow) => sum + (flow.taxResult?.netAmount ?? flow.resolvedAmount), 0));
-      const irDue = salaryNet > 0 ? calculatePersonalIncomeTax(salaryNet).taxDue : 0;
+      const irDue = salaryNet > 0 ? salaryIncomeTax.taxDue : 0;
       metrics.netPersonalCash = roundMoney(received - irDue);
       metrics.personalIncomeTax = irDue;
       metrics.treasury = metrics.netPersonalCash;
@@ -485,7 +532,6 @@ export function resolveScenarioGraph(
   ).reduce((sum, entity) => sum + (entity.metrics.treasury ?? 0), 0));
   const netPersonalCash = roundMoney(entities.filter((entity) => entity.entityType === 'person')
     .reduce((sum, entity) => sum + (entity.metrics.netPersonalCash ?? 0), 0));
-  const personalIncomeTax = calculatePersonalIncomeTax(executiveNet);
   const warnings = [
     'Modèle annuel simplifié, soldes initiaux nuls et paiements dans la période ; IR des rémunérations calculé selon le barème 2026 (1 part) et cotisations approximatives.',
   ];
@@ -498,7 +544,12 @@ export function resolveScenarioGraph(
     warnings.push('Holding(s) sous le seuil mère-fille (détention < 5 %) : le régime (CGI art. 145) est appliqué de façon conservatrice mais requiert vérification par un professionnel.');
   }
   if (executiveNet > 0) {
-    warnings.push('IR personnel calculé sur la rémunération nette (barème 2026, 1 part, abattement 10 %) ; sans décote ni situation familiale personnalisée.');
+    warnings.push(`IR personnel : barème 2026 sur le net imposable, ${parts} part(s), abattement 10 %, plafonnement du quotient et décote appliqués ; réductions et crédits d’impôt non modélisés.`);
+  }
+  if (personalDividendGross > 0) {
+    warnings.push(dividendTaxMode === 'bareme'
+      ? 'Dividendes imposés au barème (option globale CGI art. 200 A, 2) : l’option engage tous les revenus de capitaux mobiliers du foyer, non modélisés ici.'
+      : 'Dividendes imposés au PFU (CGI art. 200 A, 1) ; l’option barème est comparée à TMI constante, hors autres revenus de capitaux mobiliers.');
   }
   warnings.push('Dividendes saisis sans validation du bénéfice distribuable, des réserves ni des conditions juridiques : une trésorerie positive ne vaut pas autorisation de distribution.');
   const unsupportedCategories: FlowCategory[] = ['management_fees', 'cca_advance', 'cca_reimbursement', 'loan_payment'];
@@ -537,6 +588,8 @@ export function resolveScenarioGraph(
       corporateTax,
       executiveSalary,
       personalIncomeTax,
+      dividendArbitrage,
+      dividendTaxMode,
       sciTaxDue: sciTax.taxDue,
       netGroupCash,
       netPersonalCash,

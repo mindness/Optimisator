@@ -19,7 +19,7 @@ export const IS_STANDARD_RATE: SourcedRate = {
   unit: 'ratio',
   source:
     'CGI art. 219, I al. 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
-  asOf: '2026-09-07',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -28,7 +28,7 @@ export const IS_REDUCED_RATE: SourcedRate = {
   unit: 'ratio',
   source:
     'CGI art. 219, I-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
-  asOf: '2026-09-07',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -38,7 +38,7 @@ export const IS_REDUCED_THRESHOLD_EUR: SourcedRate = {
   unit: 'eur',
   source:
     'CGI art. 219, I-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
-  asOf: '2026-09-07',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -51,7 +51,7 @@ export const IS_REDUCED_CA_CEILING_EUR: SourcedRate = {
   unit: 'eur',
   source:
     'CGI art. 219, I-b al. 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
-  asOf: '2026-09-16',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -60,7 +60,7 @@ export const MOTHER_DAUGHTER_MIN_HOLDING_PCT: SourcedRate = {
   unit: 'ratio',
   source:
     'CGI art. 145, 1-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051203497',
-  asOf: '2026-09-07',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -69,7 +69,7 @@ export const MOTHER_DAUGHTER_QPFC_RATE: SourcedRate = {
   unit: 'ratio',
   source:
     'CGI art. 216, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048831340',
-  asOf: '2026-09-07',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -78,7 +78,7 @@ export const PFU_IR_RATE: SourcedRate = {
   unit: 'ratio',
   source:
     'CGI art. 200 A, 1-B-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053546896',
-  asOf: '2026-09-07',
+  asOf: '2026-09-19',
   status: 'verified',
 };
 
@@ -302,3 +302,188 @@ export const URSSAF_EMPLOYER_RATE_2026: SourcedRate = {
  * Not a SourcedRate — model scaffold until URSSAF bars are frozen.
  */
 export const EXECUTIVE_EMPLOYEE_RATE_APPROX = 0.22;
+
+/* ------------------------------------------------------------------------ *
+ * Campagne de sourçage OpenLegi du 2026-09-20 — structures IS / IR, TMI.
+ * Voir docs/superpowers/plans/2026-09-20-gap-structures-is-ir-tmi.md §4.
+ * ------------------------------------------------------------------------ */
+
+/** Abattement de 40 % sur les dividendes imposés au barème (option globale). */
+export const DIVIDEND_BAREME_ALLOWANCE: SourcedRate = {
+  value: 0.4,
+  unit: 'ratio',
+  source:
+    'CGI art. 158, 3-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373673',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/**
+ * Part de CSG déductible du revenu imposable de l'année suivante, pour les
+ * revenus du patrimoine imposés au barème. Sans objet sous PFU.
+ */
+export const CSG_DEDUCTIBLE_POINTS: SourcedRate = {
+  value: 0.068,
+  unit: 'ratio',
+  source:
+    'CGI art. 154 quinquies, II — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054336634',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/** Plafond de l'avantage en impôt procuré par chaque demi-part excédentaire. */
+export const QUOTIENT_FAMILIAL_CAP_PER_HALF_PART_EUR: SourcedRate = {
+  value: 1_807,
+  unit: 'eur',
+  source:
+    'CGI art. 197, I-2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542636',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/** Décote : seuil célibataire (CGI art. 197, I-4-a). */
+export const IR_DECOTE_SINGLE_EUR: SourcedRate = {
+  value: 897,
+  unit: 'eur',
+  source:
+    'CGI art. 197, I-4-a — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542636',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/** Décote : seuil imposition commune (CGI art. 197, I-4-a). */
+export const IR_DECOTE_COUPLE_EUR: SourcedRate = {
+  value: 1_483,
+  unit: 'eur',
+  source:
+    'CGI art. 197, I-4-a — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542636',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/** Décote : taux de dégressivité appliqué à l'impôt brut. */
+export const IR_DECOTE_SLOPE: SourcedRate = {
+  value: 0.4525,
+  unit: 'ratio',
+  source:
+    'CGI art. 197, I-4-a — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542636',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/** Catégories du régime micro : abattement forfaitaire et seuil de CA. */
+export type MicroCategory = 'bic_vente' | 'bic_services' | 'bnc' | 'meuble_tourisme';
+
+export interface MicroBracket {
+  label: string;
+  /** Abattement forfaitaire pour frais, appliqué au CA HT. */
+  allowance: number;
+  /** Seuil de CA HT au-delà duquel le régime micro cesse de s'appliquer. */
+  ceilingEur: number;
+  /** Taux global de cotisations SSI sur le CA (paramètre modèle, non statutaire). */
+  socialRate: number;
+  source: string;
+  status: SourcedRateStatus;
+}
+
+/**
+ * CGI art. 50-0 (BIC) et 102 ter (BNC), seuils 2026.
+ * Les abattements et seuils sont sourcés ; les taux de cotisations micro ne
+ * figurent dans aucun code — ce sont des paramètres modèle (`placeholder`),
+ * au même titre que l'AT/MP de URSSAF_BRANCHES_2026.
+ */
+export const MICRO_BRACKETS_2026: Record<MicroCategory, MicroBracket> = {
+  bic_vente: {
+    label: 'Micro-BIC — vente de marchandises / hébergement',
+    allowance: 0.71,
+    ceilingEur: 203_100,
+    socialRate: 0.123,
+    source:
+      'CGI art. 50-0, 1-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373853',
+    status: 'verified',
+  },
+  bic_services: {
+    label: 'Micro-BIC — prestations de services',
+    allowance: 0.5,
+    ceilingEur: 83_600,
+    socialRate: 0.212,
+    source:
+      'CGI art. 50-0, 1-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373853',
+    status: 'verified',
+  },
+  bnc: {
+    label: 'Micro-BNC — professions libérales',
+    allowance: 0.34,
+    ceilingEur: 83_600,
+    socialRate: 0.246,
+    source:
+      'CGI art. 102 ter, 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373747',
+    status: 'verified',
+  },
+  meuble_tourisme: {
+    label: 'Micro-BIC — meublé de tourisme non classé',
+    allowance: 0.3,
+    ceilingEur: 15_000,
+    socialRate: 0.212,
+    source:
+      'CGI art. 50-0, 1-1° bis — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373853',
+    status: 'verified',
+  },
+};
+
+/** Plancher de l'abattement micro, toutes catégories (CGI art. 50-0 / 102 ter). */
+export const MICRO_ALLOWANCE_FLOOR_EUR: SourcedRate = {
+  value: 305,
+  unit: 'eur',
+  source:
+    'CGI art. 50-0, 1 et art. 102 ter, 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373853',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/**
+ * Cotisations SSI du gérant majoritaire / entrepreneur individuel au réel,
+ * exprimées en ratio du revenu net professionnel.
+ *
+ * Aucun taux global n'existe en droit : les cotisations SSI sont la somme de
+ * branches à assiettes et plafonds distincts (maladie dégressive, retraite
+ * plafonnée/déplafonnée, CSG-CRDS sur une assiette majorée). Ce ratio plat est
+ * un paramètre de modèle, jamais un barème.
+ */
+export const TNS_SOCIAL_RATE_APPROX: SourcedRate = {
+  value: 0.45,
+  unit: 'ratio',
+  source:
+    'Aucun taux global statutaire — somme de branches SSI (CSS art. L131-6, L621-1 et s.) ; paramètre modèle',
+  asOf: '2026-09-20',
+  status: 'placeholder',
+};
+
+/**
+ * Fraction des dividendes non assujettie aux cotisations sociales pour un
+ * gérant majoritaire : 10 % du capital social, des primes d'émission et des
+ * sommes versées en compte courant d'associé. Au-delà, les dividendes entrent
+ * dans l'assiette des cotisations SSI.
+ */
+export const TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE: SourcedRate = {
+  value: 0.1,
+  unit: 'ratio',
+  source:
+    'CSS art. L131-6, III — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048683707',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/**
+ * Part des cotisations salariales déductible du revenu imposable.
+ * Le net imposable = brut − cotisations déductibles ; la CSG non déductible
+ * (2,4 pts) et la CRDS (0,5 pt) restent dans l'assiette de l'IR.
+ */
+export const SALARY_NON_DEDUCTIBLE_CSG_CRDS: SourcedRate = {
+  value: (0.024 + 0.005) * 0.9825,
+  unit: 'ratio',
+  source:
+    'CGI art. 154 quinquies, I (CSG déductible 6,8 des 9,2 pts) + CRDS non déductible : ordonnance n° 96-50 art. 19',
+  asOf: '2026-09-20',
+  status: 'verified',
+};

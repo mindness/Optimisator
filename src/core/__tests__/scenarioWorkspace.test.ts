@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET } from '../presets';
-import { loadWorkspace, removeEntity, saveWorkspace, simulationIssues, snapshotScenario } from '../scenarioWorkspace';
+import { adviseFlow, ENGINE_COVERED_TYPES, loadWorkspace, removeEntity, saveWorkspace, simulationIssues, snapshotScenario } from '../scenarioWorkspace';
 
 function memory() {
   const data = new Map<string, string>();
@@ -40,6 +40,25 @@ describe('scenario workspace', () => {
     draft.entities.push({ id: 'opco-2', label: 'Autre SASU', entityType: 'sasu' });
     draft.flows[0]!.periodicity = 'monthly';
     expect(simulationIssues(draft).length).toBeGreaterThan(1);
+  });
+  it('proposes the mère-fille regime on a SASU → holding link and flags a missing stake', () => {
+    const draft = snapshotScenario(SASU_HOLDING_PRESET);
+    const advice = adviseFlow(draft, { sourceId: 'sasu-1', targetId: 'holding-1', amount: 50_000 });
+    expect(advice).toMatchObject({ category: 'dividend', legalNoteId: 'mere-fille-art-145' });
+    expect(advice!.rate).toBeCloseTo(0.0125, 6);
+    expect(advice!.tax).toBe(625);
+    expect(advice!.warning).toBeUndefined();
+
+    const orphan = { ...draft, ownerships: [], entities: draft.entities.map((e) => ({ ...e, ownershipPercent: undefined })) };
+    expect(adviseFlow(orphan, { sourceId: 'sasu-1', targetId: 'holding-1' })!.warning).toContain('5 %');
+    expect(adviseFlow(draft, { sourceId: 'holding-1', targetId: 'person-1' })!.regime).toContain('PFU');
+  });
+  it('keeps an EURL drawable but says why it is not computed', () => {
+    const draft = snapshotScenario(FREELANCE_SASU_PRESET);
+    draft.entities.push({ id: 'eurl-1', label: 'EURL', entityType: 'eurl' });
+    expect(simulationIssues(draft).some((issue) => issue.includes('TNS'))).toBe(true);
+    expect(ENGINE_COVERED_TYPES.has('eurl')).toBe(false);
+    expect(ENGINE_COVERED_TYPES.has('sasu')).toBe(true);
   });
   it('blocks orphaned and negative flows', () => {
     const draft = snapshotScenario(FREELANCE_SASU_PRESET);

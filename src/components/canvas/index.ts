@@ -4,7 +4,7 @@ export type {
   EntityNodePayload,
   EntityNodeShellProps,
 } from './EntityNode';
-export { FlowEdge, particleDurationSeconds, flowDataFromPayload } from './FlowEdge';
+export { FlowEdge, flowCycleSeconds, flowDataFromPayload } from './FlowEdge';
 export type { CanvasFlowEdge, FlowEdgePayload } from './FlowEdge';
 export { FlowCanvas, layoutPresetNodes, flowsToEdges } from './FlowCanvas';
 export type { FlowCanvasProps } from './FlowCanvas';

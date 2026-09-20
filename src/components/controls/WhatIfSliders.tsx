@@ -6,6 +6,10 @@ export type WhatIfSlidersProps = {
   /** Resolved/preset seeds when a whatIf key is unset. */
   defaults?: Partial<WhatIfInputs>;
   hasHolding?: boolean;
+  /** TMI résolue du foyer, affichée en regard du profil fiscal. */
+  marginalRate?: number;
+  /** Régime effectivement retenu pour les dividendes (utile en mode auto). */
+  appliedDividendMode?: 'pfu' | 'bareme';
   onChange: (patch: Partial<WhatIfInputs>) => void;
   onReset?: () => void;
   className?: string;
@@ -87,6 +91,8 @@ export function WhatIfSliders({
   values,
   defaults,
   hasHolding = false,
+  marginalRate,
+  appliedDividendMode,
   onChange,
   onReset,
   className = '',
@@ -144,6 +150,75 @@ export function WhatIfSliders({
           );
         })}
       </ul>
+
+      <fieldset className="m-0 flex flex-col gap-2 border border-border p-2">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+          Foyer fiscal
+        </legend>
+
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor="what-if-situation" className="text-xs font-medium text-fg">
+            Situation
+          </label>
+          <select
+            id="what-if-situation"
+            value={values.situation ?? 'single'}
+            onChange={(e) => onChange({ situation: e.target.value as 'single' | 'couple' })}
+            className="border border-border bg-surface px-1 py-0.5 text-xs text-fg"
+          >
+            <option value="single">Célibataire</option>
+            <option value="couple">Couple (imposition commune)</option>
+          </select>
+        </div>
+
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor="what-if-parts" className="text-xs font-medium text-fg">
+            Parts de quotient familial
+          </label>
+          <input
+            id="what-if-parts"
+            type="number"
+            min={1}
+            max={10}
+            step={0.5}
+            value={values.parts ?? (values.situation === 'couple' ? 2 : 1)}
+            onChange={(e) => onChange({ parts: Math.max(1, Number(e.target.value)) })}
+            className="w-16 border border-border bg-surface px-1 py-0.5 text-right text-xs text-fg"
+          />
+        </div>
+
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor="what-if-dividend-mode" className="text-xs font-medium text-fg">
+            Imposition des dividendes
+          </label>
+          <select
+            id="what-if-dividend-mode"
+            value={values.dividendTaxMode ?? 'auto'}
+            onChange={(e) =>
+              onChange({ dividendTaxMode: e.target.value as 'auto' | 'pfu' | 'bareme' })
+            }
+            className="border border-border bg-surface px-1 py-0.5 text-xs text-fg"
+          >
+            <option value="auto">Automatique (le moins coûteux)</option>
+            <option value="pfu">PFU 30 %</option>
+            <option value="bareme">Barème + abattement 40 %</option>
+          </select>
+        </div>
+
+        {marginalRate !== undefined ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-xs font-medium text-fg">TMI du foyer</span>
+            <MetricBadge amount={marginalRate} unit="percent" tone="social" />
+          </div>
+        ) : null}
+
+        {appliedDividendMode && (values.dividendTaxMode ?? 'auto') === 'auto' ? (
+          <p className="m-0 text-xs text-fg-muted">
+            Régime retenu : {appliedDividendMode === 'pfu' ? 'PFU 30 %' : 'barème (option globale)'}.
+            L’option barème engage tous les revenus de capitaux mobiliers du foyer.
+          </p>
+        ) : null}
+      </fieldset>
     </section>
   );
 }

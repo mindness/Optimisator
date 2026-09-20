@@ -226,7 +226,9 @@ describe('calculatePersonalIncomeTax — barème IR 2026 (CGI art. 197, abatteme
     expect(result.breakdown).toContainEqual(
       expect.objectContaining({ label: '11 %', amount: euros(base * 0.11) }),
     );
-    expect(result.taxDue).toBe(euros(base * 0.11));
+    // La décote (CGI art. 197 I-4-a) s'impute sur l'impôt brut de barème.
+    expect(result.grossTaxDue).toBe(euros(base * 0.11));
+    expect(result.taxDue).toBe(euros(result.grossTaxDue - result.decote));
     expect(result.netAfterIr).toBe(euros(gross - result.taxDue));
   });
 
@@ -269,6 +271,7 @@ describe('calculateExecutiveSalary', () => {
       employerCharges: 0,
       employeeCharges: 0,
       totalCompanyCost: 0,
+      netImposable: 0,
     });
   });
 });

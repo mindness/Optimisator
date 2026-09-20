@@ -64,6 +64,12 @@ function writeHashParam(key: string, encoded: string | null) {
   window.history.replaceState(null, '', url.toString());
 }
 
+function readHashState<T>(key: string): T | null {
+  const encoded = readHashParam(key);
+  if (!encoded) return null;
+  return decodeUrlState<T>(encoded);
+}
+
 export type UseUrlStateOptions<T> = {
   /** Hash query key (default `s`). */
   key?: string;
@@ -84,21 +90,16 @@ export function useUrlState<T>(
   hydrateFromHash: () => T | null;
 } {
   const key = options.key ?? DEFAULT_HASH_KEY;
-  const [state, setStateInternal] = useState<T>(initial);
+  // Le hash est lu au premier rendu : hydrater dans un effet afficherait d'abord
+  // l'état par défaut, puis le scénario partagé.
+  const [state, setStateInternal] = useState<T>(() => readHashState<T>(key) ?? initial);
 
-  const hydrateFromHash = useCallback((): T | null => {
-    const encoded = readHashParam(key);
-    if (!encoded) return null;
-    return decodeUrlState<T>(encoded);
-  }, [key]);
+  const hydrateFromHash = useCallback((): T | null => readHashState<T>(key), [key]);
 
   useEffect(() => {
     const hydrated = hydrateFromHash();
-    if (hydrated !== null) {
-      setStateInternal(hydrated);
-      options.onHydrate?.(hydrated);
-    }
-    // Intentional mount-only hydrate.
+    if (hydrated !== null) options.onHydrate?.(hydrated);
+    // Notification unique au montage : `options` change d'identité à chaque rendu.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once
   }, []);
 
@@ -211,8 +212,8 @@ export function parseSharePayload(data: unknown): SharePayload | null {
 
   // API may store either SharePayload or bare ScenarioState under `data`.
   let scenarioRaw = record.scenario;
-  let whatIf = record.whatIf as WhatIfInputs | undefined;
-  let activeLayers = record.activeLayers as FlowLayer[] | undefined;
+  const whatIf = record.whatIf as WhatIfInputs | undefined;
+  const activeLayers = record.activeLayers as FlowLayer[] | undefined;
 
   if (!scenarioRaw && 'id' in record && 'entities' in record) {
     scenarioRaw = data;

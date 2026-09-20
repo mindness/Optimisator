@@ -119,6 +119,10 @@
 
 .flow-canvas .react-flow__minimap {
   border-radius: 0;
+  /* Repère discret : il ne doit pas manger le coin du schéma. */
+  width: 140px;
+  height: 92px;
+  opacity: 0.85;
 }
 
 /* Interaction feedback stays quiet: no entrance choreography on the workspace. */
@@ -228,8 +232,21 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Flux : un pointillé qui glisse du payeur vers le bénéficiaire. Le décalage
+   parcourt exactement un motif, donc la boucle est invisible même au remontage. */
+.flow-edge-flux {
+  stroke-dasharray: 9 23;
+  stroke-linecap: round;
+  animation: flow-edge-flux 1.6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes flow-edge-flux {
+  to { stroke-dashoffset: -32; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .flow-edge-particle {
+  .flow-edge-flux {
     display: none;
   }
 
@@ -243,5 +260,52 @@
   .view-tab[aria-pressed="true"],
   [data-testid="money-tracer-status"] {
     animation: none;
+  }
+}
+
+/* Sections repliables : ::details-content est Baseline, interpolate-size reste
+   une amélioration progressive — sans lui l'ouverture est instantanée. */
+.disclosure > summary::marker {
+  color: var(--fg-muted);
+}
+
+.disclosure > summary:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.disclosure::details-content {
+  height: 0;
+  overflow: clip;
+  opacity: 0;
+  transition:
+    height var(--feedback-duration, 140ms) ease,
+    opacity var(--feedback-duration, 140ms) ease,
+    content-visibility var(--feedback-duration, 140ms) allow-discrete;
+}
+
+.disclosure[open]::details-content {
+  opacity: 1;
+}
+
+@supports (interpolate-size: allow-keywords) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  .disclosure[open]::details-content {
+    height: auto;
+  }
+}
+
+@supports not (interpolate-size: allow-keywords) {
+  .disclosure[open]::details-content {
+    height: auto;
+    transition: opacity var(--feedback-duration, 140ms) ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure::details-content {
+    transition: none;
   }
 }

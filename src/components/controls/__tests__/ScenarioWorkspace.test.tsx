@@ -1,0 +1,36 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+
+import { ScenarioWorkspace } from '../ScenarioWorkspace';
+import { FREELANCE_SASU_PRESET } from '@/core/presets';
+
+beforeAll(() => {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+});
+
+afterEach(cleanup);
+
+function entityList() {
+  return screen.getByText('Sociétés et acteurs').closest('details') as HTMLDetailsElement;
+}
+
+describe('ScenarioWorkspace', () => {
+  it('adds an entity from the palette and empties the schema on reset', () => {
+    render(<ScenarioWorkspace initialScenario={FREELANCE_SASU_PRESET} whatIf={{}} onApply={() => {}} />);
+
+    const before = within(entityList()).getAllByRole('group').length;
+    fireEvent.click(screen.getByRole('button', { name: 'Holding (SAS)' }));
+    expect(within(entityList()).getAllByRole('group')).toHaveLength(before + 1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Repartir de zéro' }));
+    expect(screen.getByText('Aucune entité : commencez par la palette.')).toBeInTheDocument();
+  });
+});

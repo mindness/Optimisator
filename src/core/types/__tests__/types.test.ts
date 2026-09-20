@@ -18,10 +18,14 @@ describe('EntityType union', () => {
   it('contains exactly the design-spec entity kinds', () => {
     expect(ENTITY_TYPES).toEqual([
       'sasu',
+      'eurl',
+      'sarl',
       'holding_sas',
       'holding_sarl',
       'sci_is',
       'sci_ir',
+      'micro_entreprise',
+      'entreprise_individuelle',
       'person',
       'client',
       'vendor',
@@ -29,7 +33,7 @@ describe('EntityType union', () => {
       'urssaf',
       'bank',
     ]);
-    expect(ENTITY_TYPES).toHaveLength(11);
+    expect(ENTITY_TYPES).toHaveLength(15);
   });
 });
 

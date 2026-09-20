@@ -30,11 +30,22 @@ const toneClass: Record<FlowTone, string> = {
   neutral: 'text-fg',
 };
 
+/** Format a ratio (0.41) as a FR percentage (41 %). */
+export function formatPercent(ratio: number, fractionDigits = 0): string {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'percent',
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(ratio);
+}
+
 export type MetricBadgeProps = {
   amount: number;
   label?: string;
   tone?: FlowTone;
   fractionDigits?: number;
+  /** `percent` traite `amount` comme un ratio (0,41 → 41 %). */
+  unit?: 'eur' | 'percent';
   className?: string;
 };
 
@@ -43,9 +54,12 @@ export function MetricBadge({
   label,
   tone = 'neutral',
   fractionDigits,
+  unit = 'eur',
   className = '',
 }: MetricBadgeProps) {
-  const formatted = formatEuro(amount, fractionDigits);
+  const formatted = unit === 'percent'
+    ? formatPercent(amount, fractionDigits ?? 0)
+    : formatEuro(amount, fractionDigits);
 
   return (
     <span

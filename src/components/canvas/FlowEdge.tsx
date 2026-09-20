@@ -5,7 +5,7 @@ import {
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
-import { useId, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { formatEuro, type FlowTone } from '@/components/common/MetricBadge';
 import type { FlowCategory, FlowEdgeData } from '@/core/types';
@@ -14,6 +14,8 @@ import type { FlowCategory, FlowEdgeData } from '@/core/types';
 export type FlowEdgePayload = FlowEdgeData & {
   /** Injected by FlowCanvas — label click selects the flow. */
   onSelect?: (flow: FlowEdgeData) => void;
+  /** Décalage vertical du libellé quand plusieurs flux partagent le même tracé. */
+  labelOffset?: number;
   traceHighlight?: boolean;
 } & Record<string, unknown>;
 
@@ -41,10 +43,13 @@ export function flowDataFromPayload(data: FlowEdgePayload): FlowEdgeData {
   };
 }
 
-/** Cycle duration (s): clamp(1.5, log10(amount+1), 6) — design §4.4. */
-export function particleDurationSeconds(amount: number): number {
-  const raw = Math.log10(Math.abs(amount) + 1);
-  return Math.min(6, Math.max(1.5, raw));
+/**
+ * Durée d'un cycle de pointillés (s) : plus le montant est gros, plus le flux
+ * file vite. Le motif boucle sur lui-même, donc un remontage ne se voit pas.
+ */
+export function flowCycleSeconds(amount: number): number {
+  const magnitude = Math.log10(Math.abs(amount) + 1); // ~0 pour 1 €, ~6 pour 1 M€
+  return Math.max(0.6, 2.4 - magnitude * 0.3);
 }
 
 function categoryTone(category: FlowCategory): FlowTone {
@@ -117,8 +122,6 @@ export function FlowEdge({
   markerEnd,
   style,
 }: EdgeProps<CanvasFlowEdge>) {
-  const reactId = useId();
-  const pathId = `flow-path-${id}-${reactId.replace(/:/g, '')}`;
   const reducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
     getReducedMotionSnapshot,
@@ -138,8 +141,7 @@ export function FlowEdge({
   const category = data?.category ?? 'revenue';
   const tone = categoryTone(category);
   const stroke = strokeForTone(tone);
-  const duration = particleDurationSeconds(amount);
-  const showParticles = !reducedMotion && Math.abs(amount) > 0;
+  const showFlux = !reducedMotion && Math.abs(amount) > 0;
   const traceHighlight = Boolean(
     data && 'traceHighlight' in data && data.traceHighlight,
   );
@@ -147,7 +149,6 @@ export function FlowEdge({
 
   return (
     <>
-      <path id={pathId} d={edgePath} fill="none" stroke="none" aria-hidden />
       <BaseEdge
         id={id}
         path={edgePath}
@@ -162,32 +163,24 @@ export function FlowEdge({
             : undefined,
         }}
       />
-      {showParticles
-        ? [0, 1, 2].map((i) => (
-            <circle
-              key={`${pathId}-p-${i}`}
-              r={2.75}
-              fill={stroke}
-              className="flow-edge-particle"
-              opacity={0.9}
-            >
-              <animateMotion
-                dur={`${duration}s`}
-                begin={`${(i * duration) / 3}s`}
-                repeatCount="indefinite"
-                rotate="auto"
-              >
-                <mpath href={`#${pathId}`} />
-              </animateMotion>
-            </circle>
-          ))
-        : null}
+      {showFlux ? (
+        <path
+          className="flow-edge-flux"
+          d={edgePath}
+          fill="none"
+          stroke={stroke}
+          strokeWidth={emphasize ? 3.5 : 2.5}
+          style={{ animationDuration: `${flowCycleSeconds(amount)}s` }}
+          aria-hidden
+        />
+      ) : null}
       <EdgeLabelRenderer>
+        {/* Le centrage vit dans le transform inline : les utilitaires translate de Tailwind v4 s'y ajouteraient au lieu de le remplacer. */}
         <button
           type="button"
-          className="nodrag nopan absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer border border-border bg-surface px-1.5 py-0.5 text-left shadow-sm hover:border-border-strong"
+          className="nodrag nopan absolute cursor-pointer border border-border bg-surface px-1.5 py-0.5 text-left shadow-sm hover:border-border-strong"
           style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (data?.labelOffset ?? 0)}px)`,
             pointerEvents: 'all',
           }}
           title={data?.label ?? 'Flux'}
@@ -205,6 +198,14 @@ export function FlowEdge({
           <span className="font-amount text-xs" style={{ color: stroke }}>
             {formatEuro(amount)}
           </span>
+          {/* Friction fiscale du régime déduit du tracé : visible sans ouvrir de panneau. */}
+          {data?.taxRate ? (
+            <span className="block text-xs text-fg-muted">
+              dont {(data.taxRate * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} % d’impôt
+              {' · '}
+              <span className="font-amount">{formatEuro(amount * data.taxRate)}</span>
+            </span>
+          ) : null}
         </button>
       </EdgeLabelRenderer>
     </>

@@ -1,11 +1,25 @@
 export {
+  DEFAULT_SOCIAL_REGIME,
+  DEFAULT_TAX_REGIME,
   ENTITY_TYPES,
+  ENTITY_TYPE_LABELS,
+  MICRO_CATEGORIES,
+  SOCIAL_REGIMES,
+  SOCIAL_REGIME_LABELS,
+  TAX_REGIMES,
+  TAX_REGIME_LABELS,
   entityMetricsSchema,
   entityNodeDataSchema,
   entityTypeSchema,
+  microCategorySchema,
+  socialRegimeSchema,
+  taxRegimeSchema,
   type EntityMetrics,
   type EntityNodeData,
   type EntityType,
+  type MicroCategoryId,
+  type SocialRegime,
+  type TaxRegime,
 } from './entity';
 
 export {
