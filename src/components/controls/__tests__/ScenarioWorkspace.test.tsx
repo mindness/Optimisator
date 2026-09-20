@@ -32,5 +32,16 @@ describe('ScenarioWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Repartir de zéro' }));
     expect(screen.getByText('Aucune entité : commencez par la palette.')).toBeInTheDocument();
-  });
+    // getByRole parcourt tout le DOM : lent sous 20 workers jsdom.
+  }, 15_000);
+
+  it('lists conventions between the parties and adds their flow', () => {
+    render(<ScenarioWorkspace initialScenario={FREELANCE_SASU_PRESET} whatIf={{}} onApply={() => {}} />);
+    const distribution = screen.getByTestId('convention-distribution-personne');
+    expect(within(distribution).getByText('Flux déjà sur le schéma')).toBeDisabled();
+    const cca = screen.getByTestId('convention-cca-associe');
+    fireEvent.click(within(cca).getByText(/Ajouter le flux/));
+    expect(within(cca).getByText('Flux déjà sur le schéma')).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Apport en compte courant');
+  }, 15_000);
 });

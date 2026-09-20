@@ -24,6 +24,8 @@ function categoryTone(category: FlowCategory): FlowTone {
 
 export type FlowInspectorProps = {
   flow: FlowEdgeData | null;
+  /** Pour afficher les noms des parties plutôt que leurs identifiants. */
+  entities?: ReadonlyArray<{ id: string; label: string }>;
   taxResult?: TaxCalculationResult;
   onClose: () => void;
   className?: string;
@@ -31,6 +33,7 @@ export type FlowInspectorProps = {
 
 export function FlowInspector({
   flow,
+  entities = [],
   taxResult,
   onClose,
   className = '',
@@ -39,6 +42,7 @@ export function FlowInspector({
 
   const tone = categoryTone(flow.category);
   const amount = taxResult?.grossAmount ?? flow.amount;
+  const name = (id: string) => entities.find((entity) => entity.id === id)?.label ?? id;
 
   return (
     <aside
@@ -55,7 +59,7 @@ export function FlowInspector({
             {flow.label}
           </h2>
           <p className="m-0 mt-0.5 text-xs text-fg-muted">
-            {flow.sourceId} → {flow.targetId} · {flow.periodicity}
+            {name(flow.sourceId)} → {name(flow.targetId)} · {flow.periodicity}
           </p>
         </div>
         <button

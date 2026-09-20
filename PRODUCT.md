@@ -12,8 +12,8 @@ delegated: React 19 + Vite 8 + TypeScript + Tailwind CSS v4 + Vitest (existing s
 
 ## Users
 
-- **Utilisateur principal (MVP actuel)** : le porteur du projet, en usage **solo / local**, pour explorer et valider des montages SASU / holding / SCI sur sa machine.
-- **Audiences futures (non livrées)** : associés, préparation de RDV conseil — hors périmètre tant que le produit reste MVP perso.
+- **Utilisateur principal** : créateur ou dirigeant qui construit son montage (SASU, EURL, SARL, holding, SCI, micro) from scratch, compare les régimes et prépare un rendez-vous conseil.
+- **Usage** : site statique public, sans compte ni base de données ; les schémas vivent dans le navigateur, dans l'URL de partage et dans des fichiers `.optimisator.json` exportés.
 
 ## Product Purpose
 
@@ -27,7 +27,7 @@ Mécanisme différenciant : **flux animés sémantiquement colorés** sur un gra
 
 ## Operating Context
 
-- **MVP actuel** : développement et usage **local uniquement** (Vite + API Wrangler optionnelle) — pas de déploiement public, pas de multi-utilisateur.
+- **Déploiement** : site statique (build Vite) ; aucune donnée utilisateur côté serveur. L'API Wrangler/D1 de `backend/` reste optionnelle (liens courts) et n'est pas requise.
 - Usage typique : écran bureau, lecture intensive de montants → contraste élevé, thème sombre par défaut, bascule claire disponible.
 - Partage URL / API courte : disponible en local pour tests ; **pas** positionné comme offre SaaS publique pour l’instant.
 
@@ -35,7 +35,7 @@ Mécanisme différenciant : **flux animés sémantiquement colorés** sur un gra
 
 - Simulation pédagogique uniquement — **≠ conseil fiscal / juridique / financier**.
 - Moteur fiscal TypeScript côté client ; taux sourcés (Légifrance / BOFiP) figés hors boucle What-If (PFU modèle 2026 : IR 12,8 % + PS 18,6 % = 31,4 %).
-- **Périmètre figé pour l’instant : MVP perso local.**
+- **Périmètre** : simulation annuelle par entité ; conventions intra-groupe documentées et sourcées ; taux fiscaux et sociaux sourcés Légifrance / BOFiP avec statut (`verified` / `assumed`).
 - Hors scope MVP : auth multi-tenant, facturation, deploy Cloudflare public, import liasse/OCR, remplacement ERP.
 - Terminologie : SASU, holding, SCI, CCA, mère-fille, PFU / Flat Tax, URSSAF, IS, TVA.
 

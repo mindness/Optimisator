@@ -1,11 +1,11 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '@/App';
-import { FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET } from '@/core/presets';
+import { FREELANCE_SASU_PRESET, FULL_GROUP_PRESET, SASU_HOLDING_PRESET } from '@/core/presets';
 import { resetSimulationStoreForTests } from '@/hooks/useSimulation';
 
 beforeAll(() => {
@@ -55,6 +55,25 @@ describe('App assembly', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Simulation' }));
     expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'CA HT' })).toHaveValue('150000');
+  });
+
+  // Smoke prod : chaque onglet lourd (lazy) se monte sur les trois presets, sans erreur console.
+  it.each([
+    ['Architecture', 'Atelier architecture'],
+    ['Optimisation', 'Optimisation salaire / dividendes'],
+    ['Structures', 'Comparateur de structures'],
+    ['Projection', 'Projection pluriannuelle'],
+  ])('opens the %s tab for every preset without console errors', async (tab, region) => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<App />);
+    for (const preset of [FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET, FULL_GROUP_PRESET]) {
+      fireEvent.click(screen.getByRole('button', { name: 'Simulation' }));
+      fireEvent.change(screen.getByTestId('preset-select'), { target: { value: preset.id } });
+      fireEvent.click(screen.getByRole('button', { name: tab }));
+      await waitFor(() => expect(screen.getByRole('region', { name: region })).toBeInTheDocument());
+    }
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
   });
 
   it('initializes the salary slider with net cash and exposes an independent holding distribution', () => {

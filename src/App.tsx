@@ -15,6 +15,7 @@ import {
   TimelineBar,
   WhatIfSliders,
 } from '@/components/controls';
+import { ScenarioFileButtons } from '@/components/controls/ScenarioFileButtons';
 const Optimizer = lazy(() =>
   import('@/components/controls/Optimizer').then((m) => ({ default: m.Optimizer })),
 );
@@ -165,6 +166,15 @@ export default function App() {
               ))}
             </select>
           </label>
+          <ScenarioFileButtons
+            scenario={simulation.scenario}
+            whatIf={simulation.whatIf}
+            onImport={(scenario, whatIf) => {
+              simulation.setScenario(scenario);
+              simulation.setWhatIf(whatIf);
+              setPreviewId(null);
+            }}
+          />
           <button
             type="button"
             onClick={() => setShareOpen(true)}
@@ -350,6 +360,7 @@ export default function App() {
 
         <FlowInspector
           flow={selectedFlow}
+          entities={simulation.scenario.entities}
           taxResult={selectedFlow?.taxResult}
           onClose={() => setSelectedFlowId(null)}
         />

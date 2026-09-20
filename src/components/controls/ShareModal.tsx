@@ -58,6 +58,8 @@ export function ShareModal({
   const hashUrl = useMemo(() => buildHashShareUrl(payload), [payload]);
 
   const base = resolveApiBase(apiBase);
+  // Sans API configurée (site statique), le lien court n'existe pas : seul le lien hash est proposé.
+  const shortLinkAvailable = apiBase !== undefined || base !== '' || import.meta.env.DEV;
 
   const copyHashLink = useCallback(async () => {
     const ok = await copyText(hashUrl);
@@ -149,8 +151,9 @@ export function ShareModal({
               Partager le scénario
             </h2>
             <p className="mt-1 text-sm text-fg-muted">
-              Lien court via API (`/s/:slug`), ou fallback compressé dans
-              l&apos;URL.
+              {shortLinkAvailable
+                ? 'Lien court via API (`/s/:slug`), ou fallback compressé dans l’URL.'
+                : 'Le schéma complet est compressé dans l’URL : aucun serveur, aucun compte.'}
             </p>
           </div>
           <button
@@ -164,20 +167,22 @@ export function ShareModal({
         </div>
 
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => void copyShortLink()}
-            disabled={status === 'saving'}
-            className="inline-flex h-11 items-center justify-center border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-flow-cash disabled:opacity-60"
-          >
-            {status === 'saving' ? 'Enregistrement…' : 'Copier le lien court'}
-          </button>
+          {shortLinkAvailable && (
+            <button
+              type="button"
+              onClick={() => void copyShortLink()}
+              disabled={status === 'saving'}
+              className="inline-flex h-11 items-center justify-center border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-flow-cash disabled:opacity-60"
+            >
+              {status === 'saving' ? 'Enregistrement…' : 'Copier le lien court'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void copyHashLink()}
-            className="inline-flex h-11 items-center justify-center border border-border bg-surface px-3 text-sm font-medium text-fg hover:border-border-strong"
+            className="inline-flex h-11 items-center justify-center border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-flow-cash"
           >
-            Copier le lien hash (hors-ligne)
+            {shortLinkAvailable ? 'Copier le lien hash (hors-ligne)' : 'Copier le lien de partage'}
           </button>
         </div>
 

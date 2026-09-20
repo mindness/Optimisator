@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ENTITY_DRAG_TYPE, FlowCanvas } from '@/components/canvas/FlowCanvas';
 import { formatEuro } from '@/components/common/MetricBadge';
 import { resolveScenarioGraph, type WhatIfInputs } from '@/core/engine';
 import {
+  DEFAULT_SOCIAL_REGIME,
+  DEFAULT_TAX_REGIME,
   ENTITY_TYPES,
   ENTITY_TYPE_LABELS,
   FLOW_CATEGORIES,
@@ -13,29 +15,50 @@ import {
   type FlowEdgeData,
   type ScenarioState,
 } from '@/core/types';
-import { adviseFlow, ENGINE_COVERED_TYPES, OUT_OF_ENGINE_REASON, loadWorkspace, removeEntity, saveWorkspace, simulationIssues, snapshotScenario, updateWorkspaceEntity, updateWorkspaceFlow } from '@/core/scenarioWorkspace';
+import { adviseFlow, completeScenario, loadDraft, newId, saveDraft, ENGINE_COVERED_TYPES, OUT_OF_ENGINE_REASON, loadWorkspace, removeEntity, saveWorkspace, simulationIssues, snapshotScenario, updateWorkspaceEntity, updateWorkspaceFlow } from '@/core/scenarioWorkspace';
+import type { ConventionMatch } from '@/core/legal/conventions';
+import { FREELANCE_SASU_PRESET, FULL_GROUP_PRESET, SASU_HOLDING_PRESET } from '@/core/presets';
 import { LegalReference } from '@/components/inspector';
+import { ConventionsPanel } from './ConventionsPanel';
 import { OwnershipEditor } from './OwnershipEditor';
+import { ScenarioFileButtons } from './ScenarioFileButtons';
+
+const STARTERS: ScenarioState[] = [FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET, FULL_GROUP_PRESET];
 
 const control = 'min-h-11 w-full border border-border bg-canvas px-2 text-sm text-fg';
 const button = 'min-h-11 border border-border bg-canvas px-3 text-sm text-fg hover:border-border-strong disabled:opacity-40';
+const OPCO = ['caHt', 'expensesHt', 'capital', 'openingTreasury', 'openingCca'];
 const fields: Record<string, string[]> = {
-  sasu: ['caHt', 'expensesHt'], sci_is: ['rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges'],
-  sci_ir: ['rentalIncomeHt', 'interestExpenses', 'otherCharges'],
+  sasu: OPCO, eurl: OPCO, sarl: OPCO, micro_entreprise: ['caHt', 'expensesHt', 'openingTreasury'], entreprise_individuelle: ['caHt', 'expensesHt', 'openingTreasury'],
+  holding_sas: ['capital', 'openingTreasury', 'openingCca'], holding_sarl: ['capital', 'openingTreasury', 'openingCca'],
+  sci_is: ['rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
+  sci_ir: ['rentalIncomeHt', 'interestExpenses', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
 };
-const fieldNames: Record<string, string> = { caHt: 'CA HT', expensesHt: 'Charges HT', rentalIncomeHt: 'Loyers HT', interestExpenses: 'Intérêts', buildingAmortization: 'Amortissement', otherCharges: 'Autres charges' };
+const fieldNames: Record<string, string> = {
+  caHt: 'CA HT annuel', expensesHt: 'Charges HT annuelles', rentalIncomeHt: 'Loyers HT annuels', interestExpenses: 'Intérêts d’emprunt annuels',
+  buildingAmortization: 'Amortissement annuel', otherCharges: 'Autres charges annuelles', capital: 'Capital libéré',
+  openingTreasury: 'Trésorerie d’ouverture', openingCca: 'Compte courant d’associé d’ouverture',
+};
+/** Champs à zéro par défaut ; les soldes d'ouverture restent absents tant qu'ils ne sont pas saisis. */
+const ZERO_DEFAULT = new Set(['caHt', 'expensesHt', 'rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges']);
+const TAX_REGIME_OPTIONS: Record<string, string> = { is: 'Impôt sur les sociétés', ir: 'Impôt sur le revenu (transparence)' };
+const SOCIAL_OPTIONS: Record<string, string> = { assimile_salarie: 'Assimilé salarié', tns: 'TNS (SSI)', none: 'Sans rémunération' };
+const MICRO_OPTIONS: Record<string, string> = { bnc: 'BNC (prestations libérales)', bic_services: 'BIC services', bic_vente: 'BIC vente', meuble_tourisme: 'Meublé de tourisme' };
+const OPERATING_TYPES: EntityType[] = ['sasu', 'eurl', 'sarl', 'micro_entreprise', 'entreprise_individuelle'];
+const REGIME_CHOICE: Partial<Record<EntityType, boolean>> = { sasu: true, eurl: true, sarl: true, holding_sas: true, holding_sarl: true, entreprise_individuelle: true };
+const SOCIAL_CHOICE: Partial<Record<EntityType, boolean>> = { sasu: true, eurl: true, sarl: true, holding_sas: true, holding_sarl: true };
 const CATEGORY_LABELS: Record<string, string> = {
   revenue: 'Chiffre d’affaires', expense: 'Charges', salary: 'Rémunération', social_charges: 'Cotisations sociales',
   dividend: 'Dividendes', vat: 'TVA', is_tax: 'Impôt sur les sociétés', management_fees: 'Management fees',
   rent: 'Loyer', cca_advance: 'Apport en compte courant', cca_reimbursement: 'Remboursement de compte courant',
-  loan_payment: 'Échéance d’emprunt',
+  loan_payment: 'Échéance d’emprunt', capital_contribution: 'Apport en capital',
 };
 const LAYER_LABELS: Record<string, string> = { treasury: 'Trésorerie', vat: 'TVA', tax: 'IS / IR', social: 'Social', legal: 'Juridique' };
 const PERIODICITY_LABELS: Record<string, string> = { annual: 'Annuel', monthly: 'Mensuel', quarterly: 'Trimestriel', one_off: 'Ponctuel' };
 const label = (dict: Record<string, string>, key: string) => dict[key] ?? key;
 
 function defaultInputs(entityType: EntityType): Record<string, number> {
-  return Object.fromEntries((fields[entityType] ?? []).map((key) => [key, 0]));
+  return Object.fromEntries((fields[entityType] ?? []).filter((key) => ZERO_DEFAULT.has(key)).map((key) => [key, 0]));
 }
 
 /** Section repliable : l'animation vit dans globals.css (.disclosure). */
@@ -71,7 +94,26 @@ function FlowRegime({ scenario, flow }: { scenario: ScenarioState; flow: FlowEdg
 export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
   initialScenario: ScenarioState; whatIf: WhatIfInputs; onApply: (scenario: ScenarioState) => void;
 }) {
-  const [draft, setDraft] = useState(() => snapshotScenario(initialScenario, whatIf));
+  const [draft, setDraftState] = useState(() => loadDraft(sessionStorage, initialScenario.id) ?? snapshotScenario(initialScenario, whatIf));
+  const [history, setHistory] = useState<{ past: ScenarioState[]; future: ScenarioState[] }>({ past: [], future: [] });
+  useEffect(() => { saveDraft(sessionStorage, initialScenario.id, draft); }, [initialScenario.id, draft]);
+  // ponytail: pile bornée à 50 états, sans fusion des frappes ; regrouper par champ si l'historique gêne.
+  function setDraft(next: ScenarioState) {
+    setHistory((h) => ({ past: [...h.past.slice(-49), draft], future: [] }));
+    setDraftState(next);
+  }
+  function undo() {
+    const previous = history.past.at(-1);
+    if (!previous) return;
+    setHistory((h) => ({ past: h.past.slice(0, -1), future: [draft, ...h.future] }));
+    setDraftState(previous);
+  }
+  function redo() {
+    const next = history.future[0];
+    if (!next) return;
+    setHistory((h) => ({ past: [...h.past, draft], future: h.future.slice(1) }));
+    setDraftState(next);
+  }
   const [baseline, setBaseline] = useState<ScenarioState | null>(null);
   const [message, setMessage] = useState('Sauvegarde explicite dans ce navigateur. Le schéma peut dépasser la couverture du moteur.');
   const issues = simulationIssues(draft);
@@ -83,22 +125,35 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
   function patchFlow(id: string, patch: Partial<FlowEdgeData>) { change(updateWorkspaceFlow(draft, id, patch)); }
 
   function addEntity(entityType: EntityType, position?: { x: number; y: number }) {
-    const id = crypto.randomUUID();
+    const id = newId();
     change({
       ...draft,
       entities: [...draft.entities, { id, label: ENTITY_TYPE_LABELS[entityType], entityType, inputs: defaultInputs(entityType) }],
       ...(position ? { nodePositions: { ...draft.nodePositions, [id]: position } } : {}),
     });
   }
-  function addFlow(sourceId: string, targetId: string) {
+  function addFlow(sourceId: string, targetId: string, category?: FlowEdgeData['category']) {
     // Le tracé propose sa nature : SASU → Holding devient un dividende mère-fille sans configuration.
-    const advice = adviseFlow(draft, { sourceId, targetId });
+    const advice = adviseFlow(draft, { sourceId, targetId, category });
     change({ ...draft, flows: [...draft.flows, {
-      id: crypto.randomUUID(), sourceId, targetId, amount: 0, periodicity: 'annual',
-      category: advice?.category ?? 'management_fees', label: advice?.label ?? 'Flux à configurer',
+      id: newId(), sourceId, targetId, amount: 0, periodicity: 'annual',
+      category: advice?.category ?? category ?? 'management_fees', label: advice?.label ?? 'Flux à configurer',
       layer: advice?.layer ?? 'treasury', ...(advice?.legalNoteId ? { legalNoteId: advice.legalNoteId } : {}),
       ...(advice?.rate !== undefined ? { taxRate: advice.rate } : {}),
     }] });
+  }
+  function addConventionFlow(match: ConventionMatch) {
+    if (!match.flow) return;
+    addFlow(match.flow.sourceId, match.flow.targetId, match.flow.category);
+    setMessage(`Flux « ${match.flow.label} » ajouté : renseignez son montant dans « Flux annuels ».`);
+  }
+  function startFrom(preset: ScenarioState) {
+    setDraft(snapshotScenario({ ...preset, id: newId(), presetId: undefined }));
+    setMessage(`Modèle « ${preset.name} » chargé : adaptez noms, montants et détentions.`);
+  }
+  function complete() {
+    change(completeScenario(draft));
+    setMessage('Schéma complété : tiers et flux obligatoires ajoutés à zéro, à renseigner.');
   }
   function save() {
     try { saveWorkspace(localStorage, { version: 1, draft, baseline }); setMessage('Schéma et référence A enregistrés dans ce navigateur.'); }
@@ -120,11 +175,21 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
     <section className="flex min-h-0 flex-1 flex-col overflow-auto bg-canvas" aria-label="Atelier architecture">
       <header className="flex flex-wrap items-center gap-2 border-b border-border p-3">
         <h2 className="mr-auto text-lg font-semibold">Architecture et comparaison</h2>
+        <label className="flex items-center gap-2 text-sm">Partir d’un modèle
+          <select className={control} value="" aria-label="Partir d’un modèle" onChange={(event) => { const preset = STARTERS.find((p) => p.id === event.target.value); if (preset) startFrom(preset); }}>
+            <option value="">Choisir…</option>
+            {STARTERS.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          </select>
+        </label>
+        <button className={button} onClick={undo} disabled={history.past.length === 0} aria-label="Annuler">Annuler</button>
+        <button className={button} onClick={redo} disabled={history.future.length === 0} aria-label="Rétablir">Rétablir</button>
         <button className={button} onClick={reset}>Repartir de zéro</button>
+        <ScenarioFileButtons scenario={draft} whatIf={{}} onMessage={setMessage}
+          onImport={(scenario) => { setDraft(scenario); }} />
         <button className={button} onClick={save}>Enregistrer localement</button>
         <button className={button} onClick={load}>Charger la sauvegarde</button>
         <button className={button} onClick={() => setBaseline(structuredClone(draft))}>Définir comme A</button>
-        <button className={button} disabled={!result} onClick={() => onApply({ ...draft, id: crypto.randomUUID(), presetId: undefined })}>Ouvrir dans le simulateur</button>
+        <button className={button} disabled={!result} onClick={() => onApply({ ...draft, id: newId(), presetId: undefined })}>Ouvrir dans le simulateur</button>
       </header>
       <p role="status" className="m-0 px-3 py-2 text-sm text-fg-muted">{message}</p>
       <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[22rem_1fr]">
@@ -132,7 +197,7 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
           <label className="block text-sm">Nom du scénario<input className={control} value={draft.name} onChange={(event) => change({ ...draft, name: event.target.value })} /></label>
 
           <Section title="Palette" open>
-            <p className="m-0 text-xs text-fg-muted">Glissez une brique sur le schéma, ou cliquez pour l’ajouter. Les briques marquées « schéma seul » se dessinent mais ne sont pas chiffrées.</p>
+            <p className="m-0 text-xs text-fg-muted">Glissez une brique sur le schéma, ou cliquez pour l’ajouter. Chaque société porte son régime (IS / IR), le statut social de son dirigeant et ses soldes d’ouverture.</p>
             <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
               {ENTITY_TYPES.map((entityType) => (
                 <li key={entityType}>
@@ -166,7 +231,15 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
                 <div className="space-y-2 border-t border-border p-2">
                   <label className="block text-sm">Nom<input className={control} value={item.label} onChange={(event) => patchEntity(item.id, { label: event.target.value })} /></label>
                   <label className="block text-sm">Type<select className={control} value={item.entityType} onChange={(event) => patchEntity(item.id, { entityType: event.target.value as EntityType, inputs: defaultInputs(event.target.value as EntityType) })}>{ENTITY_TYPES.map((type) => <option key={type} value={type}>{ENTITY_TYPE_LABELS[type]}</option>)}</select></label>
-                  {(fields[item.entityType] ?? []).map((key) => <label key={key} className="block text-sm">{fieldNames[key]} annuel (€)<input type="number" min="0" step="0.01" className={control} value={item.inputs?.[key] ?? 0} onChange={(event) => patchEntity(item.id, { inputs: { ...item.inputs, [key]: event.target.valueAsNumber } })} /></label>)}
+                  {REGIME_CHOICE[item.entityType] && <label className="block text-sm">Impôt sur les bénéfices<select className={control} value={item.taxRegime ?? DEFAULT_TAX_REGIME[item.entityType] ?? 'is'} onChange={(event) => patchEntity(item.id, { taxRegime: event.target.value as EntityNodeData['taxRegime'] })}>{Object.entries(TAX_REGIME_OPTIONS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>}
+                  {SOCIAL_CHOICE[item.entityType] && <label className="block text-sm">Statut social du dirigeant<select className={control} value={item.socialRegime ?? DEFAULT_SOCIAL_REGIME[item.entityType] ?? 'none'} onChange={(event) => patchEntity(item.id, { socialRegime: event.target.value as EntityNodeData['socialRegime'] })}>{Object.entries(SOCIAL_OPTIONS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>}
+                  {item.entityType === 'micro_entreprise' && <fieldset className="space-y-1 border border-border p-2 text-sm"><legend className="text-xs text-fg-muted">Options micro</legend>
+                    <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={item.options?.versementLiberatoire ?? false} onChange={(event) => patchEntity(item.id, { options: { ...item.options, versementLiberatoire: event.target.checked } })} />Versement libératoire de l’IR (CGI 151-0)</label>
+                    <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={item.options?.acre ?? false} onChange={(event) => patchEntity(item.id, { options: { ...item.options, acre: event.target.checked } })} />ACRE (cotisations −25 % les 12 premiers mois)</label>
+                  </fieldset>}
+                  {OPERATING_TYPES.includes(item.entityType) && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={item.options?.franchiseTva ?? item.entityType === 'micro_entreprise'} onChange={(event) => patchEntity(item.id, { options: { ...item.options, franchiseTva: event.target.checked } })} />Franchise en base de TVA (CGI 293 B)</label>}
+                  {item.entityType === 'micro_entreprise' && <label className="block text-sm">Catégorie micro<select className={control} value={item.microCategory ?? 'bnc'} onChange={(event) => patchEntity(item.id, { microCategory: event.target.value as EntityNodeData['microCategory'] })}>{Object.entries(MICRO_OPTIONS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>}
+                  {(fields[item.entityType] ?? []).map((key) => <label key={key} className="block text-sm">{fieldNames[key]} (€)<input type="number" min="0" step="0.01" className={control} value={item.inputs?.[key] ?? ''} placeholder="0" onChange={(event) => { const inputs = { ...item.inputs }; if (Number.isFinite(event.target.valueAsNumber)) inputs[key] = event.target.valueAsNumber; else delete inputs[key]; patchEntity(item.id, { inputs }); }} /></label>)}
                   <button className={button} onClick={() => change(removeEntity(draft, item.id))}>Supprimer cette entité et ses flux</button>
                 </div>
               </details>
@@ -177,8 +250,12 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
             <OwnershipEditor scenario={draft} onChange={change} />
           </Section>
 
+          <Section title="Conventions possibles" open>
+            <ConventionsPanel scenario={draft} onAddFlow={addConventionFlow} onChange={change} />
+          </Section>
+
           <Section title="Flux annuels" count={draft.flows.length} open>
-            <p className="m-0 text-xs text-fg-muted">Reliez deux nœuds sur le schéma ou ajoutez un flux, puis choisissez sa nature. Aucun régime fiscal n’est déduit du dessin.</p>
+            <p className="m-0 text-xs text-fg-muted">Reliez deux nœuds sur le schéma ou ajoutez un flux. Le tracé propose sa nature et son régime (mère-fille, PFU, management fees) ; vous restez libre de le changer.</p>
             {draft.flows.map((item) => (
               <details key={item.id} className="disclosure border border-border">
                 <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-2 text-sm">
@@ -195,6 +272,7 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
                   }}>{FLOW_CATEGORIES.map((category) => <option key={category} value={category}>{label(CATEGORY_LABELS, category)}</option>)}</select></label>
                   <FlowRegime scenario={draft} flow={item} />
                   <label className="block text-sm">Montant (€)<input className={control} type="number" min="0" step="0.01" value={item.amount} onChange={(event) => patchFlow(item.id, { amount: event.target.valueAsNumber })} /></label>
+                  {['cca_advance', 'loan_payment'].includes(item.category) && <label className="block text-sm">Intérêts annuels (€) — {item.category === 'loan_payment' ? 'part d’intérêts de l’échéance, déductible' : 'servis au prêteur, déductibles chez l’emprunteur'}<input className={control} type="number" min="0" step="0.01" value={item.interestAmount ?? ''} placeholder="0" onChange={(event) => patchFlow(item.id, { interestAmount: Number.isFinite(event.target.valueAsNumber) ? event.target.valueAsNumber : undefined })} /></label>}
                   <label className="block text-sm">Périodicité<select className={control} value={item.periodicity} onChange={(event) => patchFlow(item.id, { periodicity: event.target.value as typeof item.periodicity })}>{FLOW_PERIODICITIES.map((period) => <option key={period} value={period}>{label(PERIODICITY_LABELS, period)}</option>)}</select></label>
                   <label className="block text-sm">Calque<select className={control} value={item.layer} onChange={(event) => patchFlow(item.id, { layer: event.target.value as typeof item.layer })}>{FLOW_LAYERS.map((layer) => <option key={layer} value={layer}>{label(LAYER_LABELS, layer)}</option>)}</select></label>
                   <button className={button} onClick={() => change({ ...draft, flows: draft.flows.filter((flow) => flow.id !== item.id) })}>Supprimer le flux</button>
@@ -210,7 +288,14 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
           <FlowCanvas scenario={draft} entities={draft.entities.map((item) => ({ ...item, metrics: undefined }))} className="flex-1 border border-border"
             onConnectEntities={addFlow} onDropEntityType={addEntity}
             onPositionsChange={(nodePositions) => change({ ...draft, nodePositions })} />
-          {issues.length > 0 && <div role="alert" className="border border-flow-alert p-3"><strong>Simulation indisponible pour ce schéma</strong><ul className="list-disc pl-4">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul></div>}
+          {issues.length > 0 && (
+            <div role="alert" className="space-y-2 border border-flow-alert p-3">
+              <strong>Simulation indisponible pour ce schéma</strong>
+              <ul className="m-0 list-disc pl-4">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+              <button className={button} onClick={complete}>Compléter pour le calcul</button>
+              <span className="ml-2 text-xs text-fg-muted">ajoute la SASU, les tiers et les flux obligatoires manquants, à zéro.</span>
+            </div>
+          )}
           {result && <p className="text-sm text-fg-muted">Calcul pédagogique possible, sous les limites du moteur : {result.warnings.join(' ')}</p>}
           <section className="border-t border-border pt-3" aria-label="Comparaison A B">
             <h3 className="font-semibold">A / B — référence et brouillon courant</h3>

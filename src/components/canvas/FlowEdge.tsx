@@ -61,6 +61,7 @@ function categoryTone(category: FlowCategory): FlowTone {
     case 'cca_advance':
     case 'cca_reimbursement':
     case 'loan_payment':
+    case 'capital_contribution':
       return 'cash';
     case 'vat':
       return 'vat';

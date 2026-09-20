@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ScenarioState } from '@/core/types';
-import { ownershipIssues } from '@/core/scenarioWorkspace';
+import { newId, ownershipIssues } from '@/core/scenarioWorkspace';
 
 const control = 'min-h-11 w-full border border-border bg-canvas px-2 text-sm text-fg';
 export function OwnershipEditor({ scenario, onChange }: { scenario: ScenarioState; onChange: (scenario: ScenarioState) => void }) {
@@ -21,7 +21,7 @@ export function OwnershipEditor({ scenario, onChange }: { scenario: ScenarioStat
     <label className="block text-sm">Associé<select className={control} value={owner} onChange={(event) => setOwnerId(event.target.value)}>{owners.map((entity) => <option key={entity.id} value={entity.id}>{entity.label}</option>)}</select></label>
     <label className="block text-sm">Société détenue<select className={control} value={company} onChange={(event) => setCompanyId(event.target.value)}><option value="">Choisir</option>{companies.map((entity) => <option key={entity.id} value={entity.id}>{entity.label}</option>)}</select></label>
     <label className="block text-sm">Capital détenu (%)<input className={control} type="number" min="0.01" max="100" step="0.01" value={Number.isFinite(percent) ? percent : ''} onChange={(event) => setPercent(event.target.valueAsNumber)} /></label>
-    <button className={control} disabled={issues.length > 0} onClick={() => onChange({ ...next, ownerships: [...(scenario.ownerships ?? []), { ...candidate, id: crypto.randomUUID() }] })}>Ajouter la détention</button>
+    <button className={control} disabled={issues.length > 0} onClick={() => onChange({ ...next, ownerships: [...(scenario.ownerships ?? []), { ...candidate, id: newId() }] })}>Ajouter la détention</button>
     {issues.length > 0 && <p className="text-xs text-fg-muted">{issues.join(' ')}</p>}
     <ul className="space-y-2">{(scenario.ownerships ?? []).map((link) => <li key={link.id} className="border-t border-border pt-2 text-sm">
       {label(link.ownerId)} → {label(link.companyId)} : {link.percent} %
