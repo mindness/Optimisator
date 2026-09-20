@@ -82,6 +82,116 @@
         }
       ]
     },
+    "management-fees": {
+      "id": "management-fees",
+      "title": "Convention de prestations de services (management fees)",
+      "summary": "La holding facture à sa fille des prestations réelles (direction, gestion, administratif) sous convention écrite, à prix de marché, avec TVA. Charge déductible chez la fille, produit imposable chez la holding. Convention réglementée en SAS si conclue avec la société contrôlante.",
+      "articles": [
+        {
+          "ref": "Art. 39, 1-1° CGI",
+          "label": "Charges déductibles (frais généraux)",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542680",
+          "status": "verified",
+          "asOf": "2026-09-20",
+          "summary": "Le bénéfice net est établi sous déduction des frais généraux de toute nature — à condition d'être engagés dans l'intérêt de l'entreprise."
+        },
+        {
+          "ref": "C. com. art. L. 227-10",
+          "label": "Conventions réglementées en SAS",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000034584108",
+          "status": "verified",
+          "asOf": "2026-09-20",
+          "summary": "Rapport sur les conventions conclues entre la SAS et son président, un dirigeant, un actionnaire > 10 % ou la société qui la contrôle ; les associés statuent sur ce rapport."
+        }
+      ],
+      "alerts": [
+        {
+          "code": "acte_anormal_gestion",
+          "label": "Acte anormal de gestion",
+          "severity": "warning",
+          "detail": "Sans convention écrite, prestations réelles et prix de marché, la charge est réintégrée chez la fille."
+        }
+      ]
+    },
+    "convention-tresorerie": {
+      "id": "convention-tresorerie",
+      "title": "Convention de trésorerie intra-groupe",
+      "summary": "Les sociétés d'un même groupe peuvent se prêter de la trésorerie sans agrément bancaire, à condition qu'un lien en capital confère à l'une un pouvoir de contrôle effectif sur les autres. Les avances sont rémunérées à un taux normal et formalisées par écrit.",
+      "articles": [
+        {
+          "ref": "CMF art. L. 511-7, I-3°",
+          "label": "Exception au monopole bancaire",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049423718",
+          "status": "verified",
+          "asOf": "2026-09-20",
+          "summary": "Opérations de trésorerie autorisées entre sociétés liées par des liens de capital conférant à l'une un pouvoir de contrôle effectif sur les autres."
+        }
+      ],
+      "alerts": []
+    },
+    "cca-interets": {
+      "id": "cca-interets",
+      "title": "Compte courant d'associé rémunéré",
+      "summary": "L'associé (personne ou société) avance des fonds à la société. Les intérêts versés sont déductibles dans la limite du taux légal (moyenne des TEM bancaires), à condition que le capital soit entièrement libéré. Chez une société mère au sens de l'art. 145, la limite est levée pour les avances refinancées par emprunt obligataire.",
+      "articles": [
+        {
+          "ref": "Art. 39, 1-3° CGI",
+          "label": "Déductibilité plafonnée des intérêts de CCA",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542680",
+          "status": "verified",
+          "asOf": "2026-09-20",
+          "summary": "Intérêts servis aux associés déductibles dans la limite du taux effectif moyen des prêts à taux variable aux entreprises ; capital entièrement libéré exigé."
+        },
+        {
+          "ref": "C. com. art. L. 227-12",
+          "label": "CCA débiteur interdit (SAS)",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006227093",
+          "status": "verified",
+          "asOf": "2026-09-07",
+          "summary": "Interdiction pour le président personne physique de se faire consentir un découvert en compte courant."
+        }
+      ],
+      "alerts": []
+    },
+    "integration-fiscale": {
+      "id": "integration-fiscale",
+      "title": "Intégration fiscale (groupe IS)",
+      "summary": "Sur option de 5 ans, la holding devient seule redevable de l'IS sur le résultat d'ensemble des filiales détenues à 95 % au moins, de manière continue. Les déficits d'une société s'imputent sur les bénéfices des autres ; la QPFC mère-fille passe à 1 %.",
+      "articles": [
+        {
+          "ref": "Art. 223 A CGI",
+          "label": "Régime des groupes de sociétés",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048834056",
+          "status": "verified",
+          "asOf": "2026-09-20",
+          "summary": "Détention ≥ 95 % du capital (pleine propriété, droits à dividendes et de vote) de manière continue ; exercices alignés ; option valable 5 exercices ; solidarité de paiement."
+        }
+      ],
+      "alerts": []
+    },
+    "bail-sci": {
+      "id": "bail-sci",
+      "title": "Bail commercial ou professionnel SCI → société d'exploitation",
+      "summary": "La SCI loue les locaux à la société d'exploitation. Le loyer est déductible chez le locataire et imposé chez la SCI (IS ou revenus fonciers des associés). Le loyer doit rester au prix de marché, sinon acte anormal de gestion. Convention réglementée si l'associé est commun.",
+      "articles": [
+        {
+          "ref": "Art. 39, 1-1° CGI",
+          "label": "Déductibilité du loyer des immeubles loués",
+          "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542680",
+          "status": "verified",
+          "asOf": "2026-09-20",
+          "summary": "Le loyer des immeubles dont l'entreprise est locataire est une charge déductible du bénéfice net."
+        }
+      ],
+      "alerts": [
+        {
+          "code": "acte_anormal_gestion",
+          "label": "Acte anormal de gestion",
+          "severity": "warning",
+          "detail": "Loyer hors marché entre sociétés liées : risque de réintégration."
+        }
+      ]
+    },
     "pfu-dividendes": {
       "id": "pfu-dividendes",
       "title": "Prélèvement forfaitaire unique (PFU)",

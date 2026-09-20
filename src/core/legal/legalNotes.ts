@@ -60,16 +60,14 @@ export function resolveLegalNoteIds(flow: {
     flow.category === 'cca_advance' ||
     flow.warning?.toLowerCase().includes('cca')
   ) {
-    ids.push('cca-debiteur');
+    ids.push('cca-debiteur', 'cca-interets');
   }
 
-  if (
-    flow.category === 'management_fees' ||
-    flow.category === 'rent' ||
-    flow.warning?.toLowerCase().includes('anormal')
-  ) {
-    ids.push('acte-anormal-gestion');
-  }
+  // Chaque convention porte ses propres articles ; la note générique reste pour
+  // les avertissements libres qui mentionnent l'acte anormal de gestion.
+  if (flow.category === 'management_fees') ids.push('management-fees');
+  if (flow.category === 'rent') ids.push('bail-sci');
+  if (flow.warning?.toLowerCase().includes('anormal')) ids.push('acte-anormal-gestion');
 
   if (
     flow.category === 'dividend' &&
