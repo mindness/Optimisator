@@ -58,8 +58,9 @@ export function ShareModal({
   const hashUrl = useMemo(() => buildHashShareUrl(payload), [payload]);
 
   const base = resolveApiBase(apiBase);
-  // Sans API configurée (site statique), le lien court n'existe pas : seul le lien hash est proposé.
-  const shortLinkAvailable = apiBase !== undefined || base !== '' || import.meta.env.DEV;
+  // Lien court seulement si une API est déclarée : `VITE_API_URL` (vide = même origine, via
+  // proxy Vite en dev ou route Worker en prod), ou `apiBase` explicite.
+  const shortLinkAvailable = apiBase !== undefined || import.meta.env.VITE_API_URL !== undefined || import.meta.env.DEV;
 
   const copyHashLink = useCallback(async () => {
     const ok = await copyText(hashUrl);

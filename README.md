@@ -53,6 +53,47 @@ cd backend
 La CI GitHub ([.github/workflows/ci.yml](.github/workflows/ci.yml)) rejoue `lint → typecheck → test → build`
 sur chaque push `master` et chaque PR.
 
+## Déployer
+
+### Site statique seul (aucun serveur)
+
+```powershell
+& "C:\Program Files
+odejs
+pm.cmd" run build   # → dist/
+```
+
+Servez `dist/` (Cloudflare Pages, Netlify, GitHub Pages…). `public/_redirects` réécrit `/s/*`
+vers `index.html` (Pages / Netlify). Sans `VITE_API_URL`, le partage passe par le lien hash
+(schéma compressé dans l'URL) et le bouton « lien court » n'apparaît pas.
+
+### Avec les liens courts (Worker Cloudflare + D1, offre gratuite)
+
+```powershell
+cd backend
+& "C:\Program Files
+odejs
+px.cmd" wrangler login
+& "C:\Program Files
+odejs
+px.cmd" wrangler d1 create simulateur-flux      # copier database_id dans wrangler.toml
+& "C:\Program Files
+odejs
+px.cmd" wrangler d1 migrations apply simulateur-flux --remote
+& "C:\Program Files
+odejs
+px.cmd" wrangler deploy
+```
+
+Puis côté SPA : `VITE_API_URL=https://simulateur-flux-api.<compte>.workers.dev` au build, et
+`ALLOWED_ORIGINS = "https://votre-domaine"` dans `wrangler.toml` (`[vars]`). Si le Worker est
+routé sur `/api/*` du même domaine que la SPA, laissez `VITE_API_URL=` vide (même origine).
+
+Garde-fous en place : forme de scénario validée (Zod), corps ≤ 256 ko, CORS restreint. **Le
+rate limiting se règle dans Cloudflare** (Security → WAF → Rate limiting rules, ex. 10 POST /
+minute / IP sur `/api/scenarios`) — pas dans le code. Les scénarios stockés sont publics par
+construction : ne pas y mettre de données nominatives.
+
 ## Construire un schéma et lire les régimes
 
 La palette dépose une entité, un glisser-déposer entre deux entités crée le flux. Le tracé

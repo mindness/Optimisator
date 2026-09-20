@@ -12,10 +12,27 @@ export type ScenarioDb =
   | DrizzleD1Database<typeof schema>
   | BetterSQLite3Database<typeof schema>;
 
+/**
+ * Forme minimale d'un scénario partageable : un payload `{ scenario }` ou un
+ * ScenarioState nu. La SPA revalide le contenu complet à la lecture (Zod).
+ */
+const scenarioShape = z.object({
+  id: z.string().min(1).max(200),
+  name: z.string().min(1).max(200),
+  entities: z.array(z.object({ id: z.string().min(1), label: z.string().min(1) }).passthrough()).min(1).max(200),
+  flows: z.array(z.object({ id: z.string().min(1) }).passthrough()).max(2_000),
+}).passthrough();
+const shareShape = z.union([
+  z.object({ scenario: scenarioShape }).passthrough(),
+  scenarioShape,
+]);
 const createBodySchema = z.object({
-  data: z.unknown(),
+  data: shareShape,
   isPublic: z.boolean().optional().default(true),
 });
+
+/** Un schéma compressé tient en quelques ko ; au-delà, ce n'est pas un scénario. */
+export const MAX_BODY_BYTES = 256 * 1024;
 
 const SLUG_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 
@@ -46,9 +63,17 @@ export function createScenariosRouter(getDb: () => ScenarioDb) {
   const routes = new Hono();
 
   routes.post('/', async (c) => {
+    const declared = Number(c.req.header('content-length') ?? 0);
+    if (declared > MAX_BODY_BYTES) {
+      return c.json(apiError('PAYLOAD_TOO_LARGE', `Body exceeds ${MAX_BODY_BYTES} bytes`), 413);
+    }
     let json: unknown;
     try {
-      json = await c.req.json();
+      const text = await c.req.text();
+      if (text.length > MAX_BODY_BYTES) {
+        return c.json(apiError('PAYLOAD_TOO_LARGE', `Body exceeds ${MAX_BODY_BYTES} bytes`), 413);
+      }
+      json = JSON.parse(text);
     } catch {
       return c.json(apiError('INVALID_JSON', 'Request body must be JSON'), 400);
     }
@@ -57,17 +82,6 @@ export function createScenariosRouter(getDb: () => ScenarioDb) {
     if (!parsed.success) {
       return c.json(
         apiError('VALIDATION_ERROR', 'Invalid scenario payload', parsed.error.flatten()),
-        422,
-      );
-    }
-
-    if (
-      parsed.data.data === null ||
-      typeof parsed.data.data !== 'object' ||
-      Array.isArray(parsed.data.data)
-    ) {
-      return c.json(
-        apiError('VALIDATION_ERROR', 'data must be a non-null JSON object'),
         422,
       );
     }

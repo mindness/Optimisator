@@ -116,4 +116,25 @@ describe('GET /health', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
+
+  it('rejects payloads that are not scenario-shaped or too large', async () => {
+    const app = createTestApp(createMemoryDb());
+    const junk = await app.request('/api/scenarios', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { hello: 'world' } }),
+    });
+    expect(junk.status).toBe(422);
+
+    const huge = await app.request('/api/scenarios', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { ...sampleScenario, description: 'x'.repeat(300_000) } }),
+    });
+    expect(huge.status).toBe(413);
+
+    const wrapped = await app.request('/api/scenarios', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { scenario: sampleScenario, whatIf: { parts: 2 } } }),
+    });
+    expect(wrapped.status).toBe(201);
+  });
 });

@@ -23,17 +23,19 @@ import {
 
 export type AppBindings = {
   DB: D1Database;
+  /** Origines autorisées, séparées par des virgules ; vide = toutes (dev). */
+  ALLOWED_ORIGINS?: string;
 };
 
 function applyCors(app: Hono<{ Bindings: AppBindings }>) {
-  app.use(
-    '*',
-    cors({
-      origin: '*',
+  app.use('*', (c, next) => {
+    const allowed = (c.env?.ALLOWED_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    return cors({
+      origin: allowed.length === 0 ? '*' : (origin) => (allowed.includes(origin) ? origin : null),
       allowMethods: ['GET', 'POST', 'OPTIONS'],
       allowHeaders: ['Content-Type'],
-    }),
-  );
+    })(c, next);
+  });
 }
 
 /** Vitest / local factory with an injected Drizzle database (better-sqlite3). */
