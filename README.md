@@ -58,9 +58,7 @@ sur chaque push `master` et chaque PR.
 ### Site statique seul (aucun serveur)
 
 ```powershell
-& "C:\Program Files
-odejs
-pm.cmd" run build   # → dist/
+& "C:\Program Files\nodejs\npm.cmd" run build   # → dist/
 ```
 
 Servez `dist/` (Cloudflare Pages, Netlify, GitHub Pages…). `public/_redirects` réécrit `/s/*`
@@ -71,18 +69,10 @@ vers `index.html` (Pages / Netlify). Sans `VITE_API_URL`, le partage passe par l
 
 ```powershell
 cd backend
-& "C:\Program Files
-odejs
-px.cmd" wrangler login
-& "C:\Program Files
-odejs
-px.cmd" wrangler d1 create simulateur-flux      # copier database_id dans wrangler.toml
-& "C:\Program Files
-odejs
-px.cmd" wrangler d1 migrations apply simulateur-flux --remote
-& "C:\Program Files
-odejs
-px.cmd" wrangler deploy
+& "C:\Program Files\nodejs\npx.cmd" wrangler login
+& "C:\Program Files\nodejs\npx.cmd" wrangler d1 create simulateur-flux      # copier database_id dans wrangler.toml
+& "C:\Program Files\nodejs\npx.cmd" wrangler d1 migrations apply simulateur-flux --remote
+& "C:\Program Files\nodejs\npx.cmd" wrangler deploy
 ```
 
 Puis côté SPA : `VITE_API_URL=https://simulateur-flux-api.<compte>.workers.dev` au build, et
