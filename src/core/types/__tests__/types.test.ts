@@ -52,8 +52,9 @@ describe('FlowCategory union', () => {
       'cca_advance',
       'cca_reimbursement',
       'loan_payment',
+      'capital_contribution',
     ]);
-    expect(FLOW_CATEGORIES).toHaveLength(12);
+    expect(FLOW_CATEGORIES).toHaveLength(13);
   });
 });
 

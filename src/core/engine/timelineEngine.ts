@@ -45,7 +45,7 @@ export const TIMELINE_STEPS: readonly TimelineStep[] = [
     order: 4,
     label: 'Intra-groupe',
     description: 'Intra-groupe (loyer SCI, management fees, CCA)',
-    categories: ['management_fees', 'rent', 'cca_advance', 'cca_reimbursement', 'loan_payment'],
+    categories: ['management_fees', 'rent', 'cca_advance', 'cca_reimbursement', 'loan_payment', 'capital_contribution'],
   },
   {
     id: 'impots',

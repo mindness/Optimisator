@@ -275,7 +275,9 @@ export function whatIfDefaultsFromResolved(
 > {
   const salaryFlow = resolved.flows.find((f) => f.category === 'salary');
   const entityType = (id: string) => resolved.entities.find((entity) => entity.id === id)?.entityType;
-  const dividendFlow = resolved.flows.find((flow) => flow.category === 'dividend' && entityType(flow.sourceId) === 'sasu');
+  const primary = resolved.entities.find((entity) => entity.entityType === 'sasu')
+    ?? resolved.entities.find((entity) => ['eurl', 'sarl', 'micro_entreprise', 'entreprise_individuelle'].includes(entity.entityType));
+  const dividendFlow = resolved.flows.find((flow) => flow.category === 'dividend' && flow.sourceId === primary?.id);
   const holdingDividendFlow = resolved.flows.find((flow) => {
     const sourceType = entityType(flow.sourceId);
     return flow.category === 'dividend' && entityType(flow.targetId) === 'person' &&

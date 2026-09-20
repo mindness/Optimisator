@@ -24,12 +24,33 @@ import {
   QUOTIENT_FAMILIAL_CAP_PER_HALF_PART_EUR,
   SALARY_NON_DEDUCTIBLE_CSG_CRDS,
   TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE,
-  TNS_SOCIAL_RATE_APPROX,
   URSSAF_EMPLOYEE_RATE_2026,
   URSSAF_EMPLOYER_RATE_2026,
   VAT_STANDARD,
   type MicroCategory,
 } from './taxRules';
+import {
+  PASS_2026_EUR,
+  TNS_ABATTEMENT_CEILING_EUR,
+  TNS_ABATTEMENT_FLOOR_EUR,
+  TNS_AF_FULL_PASS,
+  TNS_AF_MAX_RATE,
+  TNS_AF_START_PASS,
+  TNS_ASSIETTE_ABATTEMENT,
+  TNS_CSG_CRDS_RATE,
+  TNS_FORMATION_RATE_OF_PASS,
+  TNS_IJ_CEILING_PASS,
+  TNS_IJ_RATE,
+  TNS_INVALIDITE_DECES_FLOOR_PASS,
+  TNS_INVALIDITE_DECES_RATE,
+  TNS_MALADIE_ABOVE_3_PASS,
+  TNS_MALADIE_STEPS,
+  TNS_RCI_CEILING_PASS,
+  TNS_RCI_T1,
+  TNS_RCI_T2,
+  TNS_RETRAITE_BASE_DEPLAFONNEE,
+  TNS_RETRAITE_BASE_PLAFONNEE,
+} from './tnsRules';
 
 /** Round EUR amounts to the nearest cent. */
 export function roundMoney(amount: number): number {
@@ -117,8 +138,9 @@ export interface MotherDaughterDividendResult {
 export function calculateMotherDaughterDividend(
   dividendAmount: number,
   holdingTaxRate: number = IS_STANDARD_RATE.value,
+  qpfcRate: number = MOTHER_DAUGHTER_QPFC_RATE.value,
 ): MotherDaughterDividendResult {
-  const qpfc = roundMoney(dividendAmount * MOTHER_DAUGHTER_QPFC_RATE.value);
+  const qpfc = roundMoney(dividendAmount * qpfcRate);
   const holdingTax = roundMoney(qpfc * holdingTaxRate);
   const netCashInHolding = roundMoney(dividendAmount - holdingTax);
   return { qpfc, holdingTax, netCashInHolding };
@@ -515,28 +537,83 @@ export function compareDividendTaxModes(
 }
 
 export interface TnsContributionsResult {
-  /** Revenu professionnel servant d'assiette (€). */
+  /** Revenu super-brut soumis (€), avant abattement. */
   base: number;
+  /** Assiette après abattement de 26 % (bornée), commune aux cotisations et à la CSG. */
+  assiette: number;
   contributions: number;
   netAfterContributions: number;
+  breakdown: Array<{ label: string; amount: number }>;
+}
+
+/** Taux maladie pour une assiette donnée : interpolation linéaire entre paliers (CSS D621-2). */
+function tnsMaladieRate(assiette: number, pass: number): number {
+  const steps = TNS_MALADIE_STEPS.value;
+  const x = assiette / pass;
+  if (x <= steps[0]!.atPass) return 0;
+  for (let i = 1; i < steps.length; i++) {
+    const prev = steps[i - 1]!;
+    const next = steps[i]!;
+    if (x <= next.atPass) return prev.rate + (next.rate - prev.rate) * (x - prev.atPass) / (next.atPass - prev.atPass);
+  }
+  return steps[steps.length - 1]!.rate;
 }
 
 /**
- * Cotisations SSI d'un gérant majoritaire de SARL/EURL ou d'un entrepreneur
- * individuel au réel, en ratio plat du revenu professionnel.
- *
- * `TNS_SOCIAL_RATE_APPROX` est un paramètre de modèle, pas un barème : les
- * cotisations SSI réelles sont la somme de branches à assiettes et plafonds
- * distincts, dont la maladie dégressive et la CSG-CRDS sur assiette majorée.
+ * Cotisations et contributions d'un travailleur indépendant (gérant majoritaire
+ * SARL/EURL à l'IS, EI ou EURL au réel) selon la méthode en vigueur depuis 2025 :
+ * assiette unique = revenu super-brut − 26 % (plancher / plafond), puis barème par
+ * branche sur cette assiette (maladie dégressive, IJ, retraite de base plafonnée
+ * et déplafonnée, RCI, invalidité-décès, allocations familiales, CSG-CRDS,
+ * formation). Voir tnsRules.ts pour chaque source.
  */
 export function calculateTnsContributions(revenuProfessionnel: number): TnsContributionsResult {
   const base = roundMoney(Math.max(0, revenuProfessionnel));
-  const contributions = roundMoney(base * TNS_SOCIAL_RATE_APPROX.value);
-  return {
-    base,
-    contributions,
-    netAfterContributions: roundMoney(revenuProfessionnel - contributions),
-  };
+  const pass = PASS_2026_EUR.value;
+  const abattement = Math.min(Math.max(base * TNS_ASSIETTE_ABATTEMENT.value, TNS_ABATTEMENT_FLOOR_EUR.value), TNS_ABATTEMENT_CEILING_EUR.value);
+  const assiette = roundMoney(Math.max(0, base - abattement));
+  if (base === 0) return { base, assiette: 0, contributions: 0, netAfterContributions: 0, breakdown: [] };
+
+  const under = (k: number) => Math.min(assiette, k * pass);
+  const between = (from: number, to: number) => Math.max(0, Math.min(assiette, to * pass) - from * pass);
+  const maladie = tnsMaladieRate(assiette, pass) * under(3) + TNS_MALADIE_ABOVE_3_PASS.value * Math.max(0, assiette - 3 * pass);
+  const ij = TNS_IJ_RATE.value * under(TNS_IJ_CEILING_PASS);
+  const retraiteBase = TNS_RETRAITE_BASE_PLAFONNEE.value * under(1) + TNS_RETRAITE_BASE_DEPLAFONNEE.value * assiette;
+  const rci = TNS_RCI_T1.value * under(1) + TNS_RCI_T2.value * between(1, TNS_RCI_CEILING_PASS);
+  const invalidite = TNS_INVALIDITE_DECES_RATE.value * Math.max(under(1), TNS_INVALIDITE_DECES_FLOOR_PASS.value * pass);
+  const afSpan = (TNS_AF_FULL_PASS - TNS_AF_START_PASS) * pass;
+  const afRate = TNS_AF_MAX_RATE.value * Math.min(1, Math.max(0, assiette - TNS_AF_START_PASS * pass) / afSpan);
+  const af = afRate * assiette;
+  const csg = TNS_CSG_CRDS_RATE.value * assiette;
+  const formation = TNS_FORMATION_RATE_OF_PASS.value * pass;
+  const breakdown = [
+    { label: 'Maladie-maternité (dégressive)', amount: roundMoney(maladie) },
+    { label: 'Indemnités journalières', amount: roundMoney(ij) },
+    { label: 'Retraite de base', amount: roundMoney(retraiteBase) },
+    { label: 'Retraite complémentaire (RCI)', amount: roundMoney(rci) },
+    { label: 'Invalidité-décès', amount: roundMoney(invalidite) },
+    { label: 'Allocations familiales', amount: roundMoney(af) },
+    { label: 'CSG-CRDS', amount: roundMoney(csg) },
+    { label: 'Formation professionnelle', amount: roundMoney(formation) },
+  ];
+  const contributions = roundMoney(breakdown.reduce((sum, line) => sum + line.amount, 0));
+  return { base, assiette, contributions, netAfterContributions: roundMoney(base - contributions), breakdown };
+}
+
+/**
+ * Revenu super-brut dont le net après cotisations vaut `netDesired` (bissection :
+ * les cotisations sont croissantes en fonction du brut).
+ */
+export function tnsGrossForNet(netDesired: number): TnsContributionsResult {
+  if (netDesired <= 0) return calculateTnsContributions(0);
+  let low = netDesired;
+  let high = netDesired * 2;
+  while (calculateTnsContributions(high).netAfterContributions < netDesired) high *= 2;
+  for (let i = 0; i < 60 && high - low > 0.005; i++) {
+    const mid = (low + high) / 2;
+    if (calculateTnsContributions(mid).netAfterContributions < netDesired) low = mid; else high = mid;
+  }
+  return calculateTnsContributions(roundMoney(high));
 }
 
 export interface TnsDividendSurchargeResult {
@@ -548,15 +625,16 @@ export interface TnsDividendSurchargeResult {
 }
 
 /**
- * Règle des 10 % (CSS art. L131-6, III) : pour un gérant majoritaire, la part
+ * Règle des 10 % (CSS art. L136-3, II-2°) : pour un gérant majoritaire, la part
  * des dividendes excédant 10 % du capital social, des primes d'émission et des
  * sommes versées en compte courant d'associé entre dans l'assiette des
- * cotisations sociales. C'est l'écart structurant entre SARL/EURL et SASU,
- * dont le président assimilé-salarié n'y est pas soumis.
+ * cotisations sociales. Le surcoût est marginal : cotisations(rémunération +
+ * part assujettie) − cotisations(rémunération).
  */
 export function calculateTnsDividendSurcharge(
   grossDividend: number,
   capitalPrimesAndCca: number,
+  baseRevenue = 0,
 ): TnsDividendSurchargeResult {
   const exemptThreshold = roundMoney(
     Math.max(0, capitalPrimesAndCca) * TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE.value,
@@ -564,11 +642,11 @@ export function calculateTnsDividendSurcharge(
   const subjectToContributions = roundMoney(
     Math.max(0, grossDividend - exemptThreshold),
   );
-  return {
-    exemptThreshold,
-    subjectToContributions,
-    contributions: roundMoney(subjectToContributions * TNS_SOCIAL_RATE_APPROX.value),
-  };
+  const contributions = roundMoney(
+    calculateTnsContributions(baseRevenue + subjectToContributions).contributions
+      - calculateTnsContributions(baseRevenue).contributions,
+  );
+  return { exemptThreshold, subjectToContributions, contributions };
 }
 
 export interface MicroEnterpriseResult {

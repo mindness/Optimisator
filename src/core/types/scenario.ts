@@ -91,6 +91,8 @@ export interface ScenarioState {
   nodePositions?: Record<string, { x: number; y: number }>;
   /** Directed legal relationships, never monetary flows. Unspecified owners remain unknown. */
   ownerships?: Array<{ id: string; ownerId: string; companyId: string; percent: number }>;
+  /** Options fiscales exercées par le groupe (conventions activées). */
+  options?: { integrationFiscale?: boolean };
 }
 
 export const scenarioStateSchema = z.object({
@@ -106,6 +108,7 @@ export const scenarioStateSchema = z.object({
   presetId: z.string().optional(),
   nodePositions: z.record(z.string(), z.object({ x: z.number(), y: z.number() })).optional(),
   ownerships: z.array(z.object({ id: z.string().min(1), ownerId: z.string().min(1), companyId: z.string().min(1), percent: z.number().positive().max(100) })).optional(),
+  options: z.object({ integrationFiscale: z.boolean().optional() }).optional(),
 });
 
 export function parseScenarioState(data: unknown): ScenarioState {

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import type { ScenarioState } from '../../types';
+import { resolveScenarioGraph } from '../graphResolver';
 
 import {
   calculateDividendTax,
@@ -7,6 +9,7 @@ import {
   calculateSciIrIncome,
   calculateTnsContributions,
   calculateTnsDividendSurcharge,
+  tnsGrossForNet,
   compareDividendTaxModes,
   findMaxGrossSalaryForTargetTMI,
   roundMoney,
@@ -19,7 +22,6 @@ import {
   PFU_TOTAL_RATE,
   QUOTIENT_FAMILIAL_CAP_PER_HALF_PART_EUR,
   TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE,
-  TNS_SOCIAL_RATE_APPROX,
 } from '../taxRules';
 
 describe('calculatePersonalIncomeTax — quotient familial et décote', () => {
@@ -164,10 +166,29 @@ describe('compareDividendTaxModes', () => {
 });
 
 describe('calculateTnsContributions', () => {
-  it('assoit les cotisations sur le revenu professionnel', () => {
+  it('applique l’assiette unique 2026 : − 26 %, puis barème par branche', () => {
     const result = calculateTnsContributions(50_000);
-    expect(result.contributions).toBe(roundMoney(50_000 * TNS_SOCIAL_RATE_APPROX.value));
+    expect(result.assiette).toBe(37_000);
+    expect(result.breakdown.map((line) => line.label)).toContain('Maladie-maternité (dégressive)');
+    // Assiette 37 000 / PASS 48 060 = 0,77 → maladie entre 4 % et 6,5 % ; taux global attendu ≈ 30-33 % du super-brut.
+    expect(result.contributions / result.base).toBeGreaterThan(0.28);
+    expect(result.contributions / result.base).toBeLessThan(0.36);
     expect(result.netAfterContributions).toBe(roundMoney(50_000 - result.contributions));
+  });
+
+  it('exonère de maladie et d’allocations familiales sous les seuils, les applique au-delà', () => {
+    const low = calculateTnsContributions(10_000);
+    expect(low.breakdown.find((line) => line.label.startsWith('Maladie'))?.amount).toBe(0);
+    const high = calculateTnsContributions(120_000);
+    expect(high.breakdown.find((line) => line.label.startsWith('Allocations'))?.amount).toBeGreaterThan(0);
+    // Effet de plafond : le taux moyen baisse au-delà du PASS (retraite de base et RCI plafonnées).
+    expect(high.contributions / high.base).toBeLessThan(calculateTnsContributions(60_000).contributions / 60_000);
+  });
+
+  it('retrouve le brut pour un net voulu', () => {
+    const gross = tnsGrossForNet(30_000);
+    expect(gross.netAfterContributions).toBeCloseTo(30_000, 0);
+    expect(gross.base).toBeGreaterThan(40_000);
   });
 
   it('ne cotise pas sur un revenu négatif', () => {
@@ -186,9 +207,9 @@ describe('calculateTnsDividendSurcharge', () => {
   });
 
   it('assujettit la fraction excédant le seuil', () => {
-    const result = calculateTnsDividendSurcharge(20_000, 50_000);
+    const result = calculateTnsDividendSurcharge(20_000, 50_000, 40_000);
     expect(result.subjectToContributions).toBe(15_000);
-    expect(result.contributions).toBe(roundMoney(15_000 * TNS_SOCIAL_RATE_APPROX.value));
+    expect(result.contributions).toBe(roundMoney(calculateTnsContributions(55_000).contributions - calculateTnsContributions(40_000).contributions));
     expect(TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE.value).toBe(0.1);
   });
 
@@ -261,5 +282,142 @@ describe('calculateSciIrIncome', () => {
     // Même immeuble, même loyer : l'IR sans amortissement taxe une base plus large.
     const ir = calculateSciIrIncome(36_000, 8_000, 3_000, 0.3);
     expect(ir.taxableIncome).toBeGreaterThan(36_000 - 8_000 - 3_000 - 10_000);
+  });
+});
+
+describe('per-entity resolution', () => {
+  const NOW = '2026-09-20T00:00:00.000Z';
+  const base = (entities: ScenarioState['entities'], flows: ScenarioState['flows'], extra: Partial<ScenarioState> = {}): ScenarioState => ({
+    id: 's', name: 's', version: 1, createdAt: NOW, updatedAt: NOW, activeLayers: ['treasury'], entities, flows, ...extra,
+  });
+  const flow = (id: string, sourceId: string, targetId: string, category: ScenarioState['flows'][number]['category'], amount: number, periodicity: 'annual' | 'monthly' = 'annual'): ScenarioState['flows'][number] =>
+    ({ id, sourceId, targetId, category, label: id, amount, periodicity, layer: 'treasury' });
+
+  it('costs a TNS salary with SSI contributions only and taxes the EURL at IS', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 'e', label: 'EURL', entityType: 'eurl', taxRegime: 'is' }, { id: 'p', label: 'Gérant', entityType: 'person' }],
+      [flow('rev', 'c', 'e', 'revenue', 100_000), flow('sal', 'e', 'p', 'salary', 30_000)],
+    );
+    const result = resolveScenarioGraph(scenario);
+    const salary = result.flows.find((f) => f.id === 'sal')!.taxResult!;
+    // TNS : brut retrouvé par bissection sur le barème, pas de part patronale.
+    expect(salary.grossAmount).toBeCloseTo(tnsGrossForNet(30_000).base, 0);
+    expect(result.summary.executiveSalary.employerCharges).toBe(0);
+    expect(result.summary.corporateTax.taxDue).toBeGreaterThan(0);
+    expect(result.entities.find((e) => e.id === 'e')!.metrics.fiscalResult).toBeCloseTo(100_000 - salary.grossAmount, 0);
+  });
+
+  it('routes an EURL at IR to the owner’s income tax as transparent income', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 'e', label: 'EURL', entityType: 'eurl' }, { id: 'p', label: 'Gérant', entityType: 'person' }],
+      [flow('rev', 'c', 'e', 'revenue', 60_000), flow('sal', 'e', 'p', 'salary', 20_000)],
+    );
+    const result = resolveScenarioGraph(scenario);
+    expect(result.summary.corporateTax.taxDue).toBe(0);
+    const eurl = result.entities.find((e) => e.id === 'e')!;
+    // Bénéfice après SSI imposé chez l'associé ; le prélèvement de 20 000 sort de la trésorerie.
+    expect(eurl.metrics.fiscalResult).toBe(roundMoney(60_000 - calculateTnsContributions(60_000).contributions));
+    expect(eurl.metrics.treasury).toBeCloseTo(eurl.metrics.fiscalResult! - 20_000, 2);
+    expect(result.summary.personalIncomeTax.taxDue).toBeGreaterThan(0);
+    expect(result.entities.find((e) => e.id === 'p')!.metrics.netPersonalCash).toBeCloseTo(20_000 - result.summary.personalIncomeTax.taxDue, 2);
+  });
+
+  it('annualises monthly flows and applies opening balances and loan interest', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 's', label: 'SASU', entityType: 'sasu', inputs: { openingTreasury: 5_000, openingCca: 1_000 } },
+       { id: 'p', label: 'Dirigeant', entityType: 'person' }, { id: 'b', label: 'Banque', entityType: 'bank' }],
+      [flow('rev', 'c', 's', 'revenue', 10_000, 'monthly'), { ...flow('loan', 's', 'b', 'loan_payment', 12_000), interestAmount: 2_000 }, flow('cca', 'p', 's', 'cca_advance', 3_000)],
+    );
+    const result = resolveScenarioGraph(scenario);
+    expect(result.summary.caHt).toBe(120_000);
+    const sasu = result.entities.find((e) => e.id === 's')!;
+    // Résultat = 120 000 − 2 000 d'intérêts ; IS dessus ; trésorerie = ouverture + net + CCA − échéance + intérêts déjà déduits.
+    expect(sasu.metrics.fiscalResult).toBe(118_000);
+    expect(sasu.metrics.treasury).toBe(5_000 + sasu.metrics.netProfit! + 3_000 - 12_000 + 2_000);
+    expect(sasu.metrics.ccaBalance).toBe(4_000);
+    expect(result.warnings.some((w) => w.includes('annualisés'))).toBe(true);
+  });
+
+  it('taxes SCI IR rents at the owner and pays social levies', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 's', label: 'SASU', entityType: 'sasu' }, { id: 'sci', label: 'SCI IR', entityType: 'sci_ir', inputs: { interestExpenses: 4_000, otherCharges: 1_000 } }, { id: 'p', label: 'Associé', entityType: 'person' }],
+      [flow('rev', 'c', 's', 'revenue', 50_000), flow('rent', 's', 'sci', 'rent', 12_000)],
+    );
+    const result = resolveScenarioGraph(scenario);
+    const sci = result.entities.find((e) => e.id === 'sci')!;
+    expect(sci.metrics.fiscalResult).toBe(7_000);
+    expect(sci.metrics.corporateTax).toBe(0);
+    expect(sci.metrics.treasury).toBe(7_000);
+    const person = result.entities.find((e) => e.id === 'p')!;
+    // PS 18,6 % sur 7 000 = 1 302, plus l'IR au barème sur ce revenu foncier (nul sous le seuil, 1 part).
+    expect(person.metrics.personalIncomeTax).toBe(1_302 + result.summary.personalIncomeTax.taxDue);
+    expect(result.summary.sciTaxDue).toBe(0);
+  });
+
+  it('adds SSI contributions on SARL dividends above 10 % of capital and CCA', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 's', label: 'SARL', entityType: 'sarl', inputs: { capital: 10_000 } }, { id: 'p', label: 'Gérant', entityType: 'person' }],
+      [flow('rev', 'c', 's', 'revenue', 100_000), flow('div', 's', 'p', 'dividend', 21_000)],
+    );
+    const result = resolveScenarioGraph(scenario, { dividendTaxMode: 'pfu' });
+    const dividend = result.flows.find((f) => f.id === 'div')!.taxResult!;
+    // Exonéré : 10 % × 10 000 = 1 000 ; 20 000 cotisent au barème marginal.
+    expect(dividend.breakdown.at(-1)?.amount).toBe(calculateTnsContributions(20_000).contributions);
+    expect(result.warnings.some((w) => w.includes('10 %'))).toBe(true);
+  });
+
+  it('splits transparent income between owners pro rata and taxes each separately', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 'e', label: 'EURL', entityType: 'eurl' }, { id: 'a', label: 'A', entityType: 'person' }, { id: 'b', label: 'B', entityType: 'person' }],
+      [flow('rev', 'c', 'e', 'revenue', 200_000)],
+      { ownerships: [{ id: 'o1', ownerId: 'a', companyId: 'e', percent: 75 }, { id: 'o2', ownerId: 'b', companyId: 'e', percent: 25 }] },
+    );
+    const result = resolveScenarioGraph(scenario);
+    const a = result.entities.find((e) => e.id === 'a')!.metrics.personalIncomeTax!;
+    const b = result.entities.find((e) => e.id === 'b')!.metrics.personalIncomeTax!;
+    expect(a).toBeGreaterThan(b);
+    expect(b).toBeGreaterThan(0);
+    expect(result.warnings.some((w) => w.includes('prorata'))).toBe(true);
+  });
+
+  it('reintegrates CCA interest above the reference rate', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 's', label: 'SASU', entityType: 'sasu' }, { id: 'p', label: 'Dirigeant', entityType: 'person' }],
+      [flow('rev', 'c', 's', 'revenue', 100_000), { ...flow('cca', 'p', 's', 'cca_advance', 10_000), interestAmount: 1_000 }],
+    );
+    const result = resolveScenarioGraph(scenario);
+    // Plafond 4,33 % × 10 000 = 433 déductibles ; 567 réintégrés.
+    expect(result.entities.find((e) => e.id === 's')!.metrics.fiscalResult).toBe(100_000 - 433);
+    expect(result.flows.find((f) => f.id === 'cca')!.taxResult?.warning).toContain('567');
+  });
+
+  it('applies micro options: versement libératoire, ACRE and VAT franchise ceiling', () => {
+    const micro = (options: NonNullable<ScenarioState['entities'][number]['options']>, revenue = 50_000) => resolveScenarioGraph(base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 'm', label: 'Micro', entityType: 'micro_entreprise', microCategory: 'bnc', options }, { id: 'p', label: 'Moi', entityType: 'person' }],
+      [flow('rev', 'c', 'm', 'revenue', revenue), flow('vat', 'm', 'dgfip', 'vat', 0)].filter((f) => f.id !== 'vat'),
+    ));
+    const plain = micro({});
+    const lib = micro({ versementLiberatoire: true });
+    const acre = micro({ acre: true });
+    expect(plain.summary.vat.netVatDue).toBe(0);
+    expect(plain.summary.personalIncomeTax.taxDue).toBeGreaterThan(0);
+    expect(lib.summary.personalIncomeTax.taxDue).toBe(0);
+    expect(lib.entities.find((e) => e.id === 'm')!.metrics.treasury).toBe(plain.entities.find((e) => e.id === 'm')!.metrics.treasury! - 50_000 * 0.022);
+    expect(acre.entities.find((e) => e.id === 'm')!.metrics.treasury).toBeGreaterThan(plain.entities.find((e) => e.id === 'm')!.metrics.treasury!);
+    expect(micro({}, 60_000).warnings.some((w) => w.includes('293 B'))).toBe(true);
+    expect(micro({ franchiseTva: false }).summary.vat.netVatDue).toBe(10_000);
+  });
+
+  it('moves a capital contribution into the company and counts it for the 10 % rule', () => {
+    const scenario = base(
+      [{ id: 'c', label: 'Clients', entityType: 'client' }, { id: 's', label: 'SARL', entityType: 'sarl' }, { id: 'p', label: 'Gérant', entityType: 'person' }],
+      [flow('rev', 'c', 's', 'revenue', 100_000), flow('cap', 'p', 's', 'capital_contribution', 50_000), flow('div', 's', 'p', 'dividend', 5_000)],
+    );
+    const result = resolveScenarioGraph(scenario, { dividendTaxMode: 'pfu' });
+    const sarl = result.entities.find((e) => e.id === 's')!;
+    expect(sarl.metrics.treasury).toBe(sarl.metrics.netProfit! + 50_000 - 5_000);
+    // 10 % × 50 000 = 5 000 exonérés : aucune cotisation sur ce dividende.
+    expect(result.flows.find((f) => f.id === 'div')!.taxResult?.breakdown.at(-1)?.amount).toBe(0);
+    expect(result.entities.find((e) => e.id === 'p')!.metrics.netPersonalCash).toBeLessThan(0);
   });
 });

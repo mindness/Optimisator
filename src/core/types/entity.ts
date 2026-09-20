@@ -167,6 +167,8 @@ export interface EntityNodeData {
   socialRegime?: SocialRegime;
   /** Catégorie micro, pertinente pour `micro_entreprise` uniquement. */
   microCategory?: MicroCategoryId;
+  /** Options exercées par l'entité (micro : versement libératoire, ACRE ; TVA : franchise en base). */
+  options?: { versementLiberatoire?: boolean; acre?: boolean; franchiseTva?: boolean };
   legalNoteIds?: string[];
   warnings?: string[];
 }
@@ -181,6 +183,7 @@ export const entityNodeDataSchema = z.object({
   taxRegime: taxRegimeSchema.optional(),
   socialRegime: socialRegimeSchema.optional(),
   microCategory: microCategorySchema.optional(),
+  options: z.object({ versementLiberatoire: z.boolean().optional(), acre: z.boolean().optional(), franchiseTva: z.boolean().optional() }).optional(),
   legalNoteIds: z.array(z.string()).optional(),
   warnings: z.array(z.string()).optional(),
 });

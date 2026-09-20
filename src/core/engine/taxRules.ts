@@ -73,6 +73,76 @@ export const MOTHER_DAUGHTER_QPFC_RATE: SourcedRate = {
   status: 'verified',
 };
 
+/** Intégration fiscale : produits de participation intra-groupe retranchés à 99 % → QPFC 1 %. */
+export const INTEGRATED_GROUP_QPFC_RATE: SourcedRate = {
+  value: 0.01,
+  unit: 'ratio',
+  source:
+    'CGI art. 223 B, al. 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048831317',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+export const INTEGRATED_GROUP_MIN_HOLDING_PCT: SourcedRate = {
+  value: 0.95,
+  unit: 'ratio',
+  source:
+    'CGI art. 223 A, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048834056',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/**
+ * Plafond de déductibilité des intérêts de comptes courants d'associés : taux de
+ * référence pour un exercice de 12 mois clos entre le 30 juin et le 29 septembre 2026.
+ */
+export const CCA_INTEREST_CAP_RATE: SourcedRate = {
+  value: 0.0433,
+  unit: 'ratio',
+  source:
+    'BOI-BIC-CHG-50-50-30 § 40 (CGI art. 39, 1-3°) — https://bofip.impots.gouv.fr/bofip/5505-PGP.html/identifiant=BOI-BIC-CHG-50-50-30-20260805',
+  asOf: '2026-08-05',
+  status: 'verified',
+};
+
+/** Versement libératoire de l'IR des micro-entrepreneurs, en % du CA HT (CGI art. 151-0, II). */
+export const MICRO_VERSEMENT_LIBERATOIRE_RATES: Record<MicroCategory, SourcedRate> = {
+  bic_vente: { value: 0.01, unit: 'ratio', source: 'CGI art. 151-0, II-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051765182', asOf: '2026-09-20', status: 'verified' },
+  bic_services: { value: 0.017, unit: 'ratio', source: 'CGI art. 151-0, II-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051765182', asOf: '2026-09-20', status: 'verified' },
+  bnc: { value: 0.022, unit: 'ratio', source: 'CGI art. 151-0, II-3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051765182', asOf: '2026-09-20', status: 'verified' },
+  meuble_tourisme: { value: 0.017, unit: 'ratio', source: 'CGI art. 151-0, II-2° (seuil du 2° de l’art. 50-0) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051765182', asOf: '2026-09-20', status: 'verified' },
+};
+
+/** Franchise en base de TVA, plafonds de l'année en cours (CGI art. 293 B, I). */
+export const VAT_FRANCHISE_CEILING_GOODS_EUR: SourcedRate = {
+  value: 93_500,
+  unit: 'eur',
+  source: 'CGI art. 293 B, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000052488142',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+export const VAT_FRANCHISE_CEILING_SERVICES_EUR: SourcedRate = {
+  value: 41_250,
+  unit: 'eur',
+  source: 'CGI art. 293 B, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000052488142',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
+/**
+ * ACRE micro-entrepreneur : taux de cotisations ramené à 75 % du taux normal pendant
+ * 12 mois (décret 2026-69, en vigueur au 1er juillet 2026 ; plafond légal de 25 %
+ * depuis la LFSS 2026). Dégressivité entre ¾ PASS et PASS non modélisée.
+ */
+export const ACRE_MICRO_REDUCTION: SourcedRate = {
+  value: 0.25,
+  unit: 'ratio',
+  source:
+    'CSS art. D131-6-3, I (75 % des taux D613-4) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053451326 ; CSS art. L131-6-4, II — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053282569',
+  asOf: '2026-09-20',
+  status: 'verified',
+};
+
 export const PFU_IR_RATE: SourcedRate = {
   value: 0.128,
   unit: 'ratio',
@@ -157,18 +227,6 @@ export const IR_EXPENSE_ALLOWANCE_FLOOR_EUR: SourcedRate = {
     'CGI art. 83, 3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373766',
   asOf: '2026-09-16',
   status: 'verified',
-};
-
-/**
- * Approximate employer cost / net for SASU président assimilé-salarié.
- * Placeholder — not a statutory rate; replace with sourced URSSAF bars later.
- */
-export const EXECUTIVE_COST_FACTOR_APPROX: SourcedRate = {
-  value: 1.8,
-  unit: 'ratio',
-  source: 'Non fixé par le CGI — paramètre modèle (URSSAF / coût employeur assimilé-salarié)',
-  asOf: '2026-09-07',
-  status: 'placeholder',
 };
 
 /** One social-contribution branch of the SASU président payslip. */
@@ -295,14 +353,6 @@ export const URSSAF_EMPLOYER_RATE_2026: SourcedRate = {
   status: 'assumed',
 };
 
-/**
- * Implicit employee contribution rate used only to decompose
- * `EXECUTIVE_COST_FACTOR_APPROX` into gross / employer / employee
- * (gross = net / (1 - rate); employer = cost − gross).
- * Not a SourcedRate — model scaffold until URSSAF bars are frozen.
- */
-export const EXECUTIVE_EMPLOYEE_RATE_APPROX = 0.22;
-
 /* ------------------------------------------------------------------------ *
  * Campagne de sourçage OpenLegi du 2026-09-20 — structures IS / IR, TMI.
  * Voir docs/superpowers/plans/2026-09-20-gap-structures-is-ir-tmi.md §4.
@@ -380,17 +430,16 @@ export interface MicroBracket {
   allowance: number;
   /** Seuil de CA HT au-delà duquel le régime micro cesse de s'appliquer. */
   ceilingEur: number;
-  /** Taux global de cotisations SSI sur le CA (paramètre modèle, non statutaire). */
+  /** Taux global de cotisations sur le CA (CSS art. D613-4, décret n° 2025-943, périodes 2026+). */
   socialRate: number;
   source: string;
   status: SourcedRateStatus;
 }
 
 /**
- * CGI art. 50-0 (BIC) et 102 ter (BNC), seuils 2026.
- * Les abattements et seuils sont sourcés ; les taux de cotisations micro ne
- * figurent dans aucun code — ce sont des paramètres modèle (`placeholder`),
- * au même titre que l'AT/MP de URSSAF_BRANCHES_2026.
+ * CGI art. 50-0 (BIC) et 102 ter (BNC), seuils 2026 ; taux de cotisations micro
+ * CSS art. D613-4 (décret n° 2025-943, en vigueur 2026) :
+ * https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000052218738
  */
 export const MICRO_BRACKETS_2026: Record<MicroCategory, MicroBracket> = {
   bic_vente: {
@@ -415,18 +464,18 @@ export const MICRO_BRACKETS_2026: Record<MicroCategory, MicroBracket> = {
     label: 'Micro-BNC — professions libérales',
     allowance: 0.34,
     ceilingEur: 83_600,
-    socialRate: 0.246,
+    socialRate: 0.256,
     source:
-      'CGI art. 102 ter, 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373747',
+      'CGI art. 102 ter, 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373747 ; taux 25,6 % : CSS art. D613-4, e)',
     status: 'verified',
   },
   meuble_tourisme: {
     label: 'Micro-BIC — meublé de tourisme non classé',
     allowance: 0.3,
     ceilingEur: 15_000,
-    socialRate: 0.212,
+    socialRate: 0.06,
     source:
-      'CGI art. 50-0, 1-1° bis — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373853',
+      'CGI art. 50-0, 1-1° bis — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373853 ; taux 6 % : CSS art. D613-4, c)',
     status: 'verified',
   },
 };
@@ -442,24 +491,6 @@ export const MICRO_ALLOWANCE_FLOOR_EUR: SourcedRate = {
 };
 
 /**
- * Cotisations SSI du gérant majoritaire / entrepreneur individuel au réel,
- * exprimées en ratio du revenu net professionnel.
- *
- * Aucun taux global n'existe en droit : les cotisations SSI sont la somme de
- * branches à assiettes et plafonds distincts (maladie dégressive, retraite
- * plafonnée/déplafonnée, CSG-CRDS sur une assiette majorée). Ce ratio plat est
- * un paramètre de modèle, jamais un barème.
- */
-export const TNS_SOCIAL_RATE_APPROX: SourcedRate = {
-  value: 0.45,
-  unit: 'ratio',
-  source:
-    'Aucun taux global statutaire — somme de branches SSI (CSS art. L131-6, L621-1 et s.) ; paramètre modèle',
-  asOf: '2026-09-20',
-  status: 'placeholder',
-};
-
-/**
  * Fraction des dividendes non assujettie aux cotisations sociales pour un
  * gérant majoritaire : 10 % du capital social, des primes d'émission et des
  * sommes versées en compte courant d'associé. Au-delà, les dividendes entrent
@@ -469,7 +500,7 @@ export const TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE: SourcedRate = {
   value: 0.1,
   unit: 'ratio',
   source:
-    'CSS art. L131-6, III — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048683707',
+    'CSS art. L136-3, II-2° (renvoi de L131-6) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051284498',
   asOf: '2026-09-20',
   status: 'verified',
 };

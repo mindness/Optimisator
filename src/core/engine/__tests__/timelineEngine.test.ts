@@ -97,7 +97,7 @@ describe('resolveScenarioGraph — ordered resolution', () => {
 });
 
 describe('resolveScenarioGraph — composite mère-fille → PFU chain', () => {
-  it('chains SASU dividend → holding (QPFC flat rate) → PFU to person', () => {
+  it('chains SASU dividend → holding (QPFC at the holding effective IS rate) → PFU to person', () => {
     const inputs: WhatIfInputs = {
       caHt: 200_000,
       expensesHt: 40_000,
@@ -120,8 +120,8 @@ describe('resolveScenarioGraph — composite mère-fille → PFU chain', () => {
     expect(sasuToHolding).toBeDefined();
     expect(holdingToPerson).toBeDefined();
 
-    // Pattern A: flat holdingTaxRate via calculateMotherDaughterDividend (not IS brackets on QPFC).
-    const mereFille = calculateMotherDaughterDividend(50_000);
+    // La QPFC (2 500 + 12 000 de fees) forme le résultat de la holding, taxé à 15 % : taux effectif 0,15.
+    const mereFille = calculateMotherDaughterDividend(50_000, 0.15);
     expect(sasuToHolding!.resolvedAmount).toBe(50_000);
     expect(sasuToHolding!.taxResult?.taxAmount).toBe(mereFille.holdingTax);
     expect(sasuToHolding!.taxResult?.netAmount).toBe(mereFille.netCashInHolding);

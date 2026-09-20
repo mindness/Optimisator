@@ -15,7 +15,8 @@ export type FlowCategory =
   | 'vat'
   | 'cca_advance'
   | 'cca_reimbursement'
-  | 'loan_payment';
+  | 'loan_payment'
+  | 'capital_contribution';
 
 export const FLOW_CATEGORIES = [
   'revenue',
@@ -30,6 +31,7 @@ export const FLOW_CATEGORIES = [
   'cca_advance',
   'cca_reimbursement',
   'loan_payment',
+  'capital_contribution',
 ] as const satisfies readonly FlowCategory[];
 
 export const flowCategorySchema = z.enum(FLOW_CATEGORIES);
@@ -56,6 +58,8 @@ export interface FlowEdgeData {
   periodicity: FlowPeriodicity;
   layer: FlowLayer;
   taxRate?: number;
+  /** Intérêts annuels attachés à un CCA / une avance / une échéance d'emprunt (€). */
+  interestAmount?: number;
   legalNoteId?: string;
   warning?: string;
 }
@@ -70,6 +74,7 @@ export const flowEdgeDataSchema = z.object({
   periodicity: flowPeriodicitySchema,
   layer: flowLayerSchema,
   taxRate: z.number().optional(),
+  interestAmount: z.number().min(0).optional(),
   legalNoteId: z.string().optional(),
   warning: z.string().optional(),
 });

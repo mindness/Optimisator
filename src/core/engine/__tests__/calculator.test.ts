@@ -10,7 +10,6 @@ import {
   calculateVAT,
 } from '../calculator';
 import {
-  EXECUTIVE_COST_FACTOR_APPROX,
   IR_2026_BRACKETS,
   IR_EXPENSE_ALLOWANCE_CAP_EUR,
   IR_EXPENSE_ALLOWANCE_FLOOR_EUR,
@@ -63,9 +62,9 @@ describe('taxRules provenance', () => {
     expect(URSSAF_BRANCHES_2026.some((b) => /chômage/i.test(b.label))).toBe(false);
   });
 
-  it('marks executive cost factor as placeholder ~1.8', () => {
-    expect(EXECUTIVE_COST_FACTOR_APPROX.status).toBe('placeholder');
-    expect(EXECUTIVE_COST_FACTOR_APPROX.value).toBe(1.8);
+  it('carries no placeholder cost factor anymore: rates derive from the branch table', () => {
+    expect(URSSAF_EMPLOYER_RATE_2026.value).toBeGreaterThan(0.3);
+    expect(URSSAF_EMPLOYEE_RATE_2026.value).toBeGreaterThan(0.15);
   });
 
   it('exposes verified IS / TVA / QPFC rates from the draft', () => {

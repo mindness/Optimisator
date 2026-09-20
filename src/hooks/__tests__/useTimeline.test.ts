@@ -36,6 +36,7 @@ describe('categoriesVisibleThrough (timeline visibility)', () => {
       'cca_advance',
       'cca_reimbursement',
       'loan_payment',
+      'capital_contribution',
     ]);
     expect(categoriesVisibleThrough('impots')).toContain('is_tax');
     expect(categoriesVisibleThrough('impots')).toContain('vat');

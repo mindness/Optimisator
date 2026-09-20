@@ -19,6 +19,8 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/__tests__/**/*.test.{ts,tsx}'],
+    // Rendus jsdom complets (App, atelier) : 5 s ne tiennent pas quand 20 workers démarrent ensemble.
+    testTimeout: 20_000,
   },
 });
 
