@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import App from '@/App';
 import { FREELANCE_SASU_PRESET, FULL_GROUP_PRESET, SASU_HOLDING_PRESET } from '@/core/presets';
 import { resetSimulationStoreForTests } from '@/hooks/useSimulation';
+import { buildHashShareUrl } from '@/hooks/useUrlState';
 
 beforeAll(() => {
   class ResizeObserverStub {
@@ -44,14 +45,16 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   resetSimulationStoreForTests();
+  localStorage.clear();
 });
 
 describe('App assembly', () => {
-  it.each(['Kbis', 'Liasse', 'Ticket'])('returns from the %s preview without losing inputs', (name) => {
+  it('shows live figures in the Synthèse document and returns without losing inputs', async () => {
     render(<App />);
     fireEvent.change(screen.getByRole('slider', { name: 'CA HT' }), { target: { value: '150000' } });
-    fireEvent.click(screen.getByRole('button', { name }));
-    expect(screen.getByText(/Maquette visuelle avec données fictives/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Synthèse' }));
+    const caRow = (await screen.findByRole('rowheader', { name: 'Chiffre d’affaires HT' })).closest('tr');
+    expect(caRow).toHaveTextContent(/150.000/);
     fireEvent.click(screen.getByRole('button', { name: 'Simulation' }));
     expect(screen.getByTestId('flow-canvas')).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'CA HT' })).toHaveValue('150000');
@@ -70,7 +73,8 @@ describe('App assembly', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Simulation' }));
       fireEvent.change(screen.getByTestId('preset-select'), { target: { value: preset.id } });
       fireEvent.click(screen.getByRole('button', { name: tab }));
-      await waitFor(() => expect(screen.getByRole('region', { name: region })).toBeInTheDocument());
+      // Import dynamique à froid : sous 20+ workers en parallèle, la seconde par défaut ne suffit pas toujours.
+      await waitFor(() => expect(screen.getByRole('region', { name: region })).toBeInTheDocument(), { timeout: 5000 });
     }
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
@@ -135,4 +139,57 @@ describe('App assembly', () => {
     expect(within(timeline).getByText(/Étape 2\//i)).toBeInTheDocument();
     expect(chargesBtn).toHaveAttribute('aria-current', 'step');
   });
+
+describe('guide 1→4', () => {
+  it('se masque, s’en souvient au rechargement, et revient depuis la barre latérale', () => {
+    const { unmount } = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Masquer' }));
+    expect(screen.queryByLabelText('Comment utiliser le simulateur')).not.toBeInTheDocument();
+
+    unmount();
+    render(<App />);
+    expect(screen.queryByLabelText('Comment utiliser le simulateur')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher le guide' }));
+    expect(screen.getByLabelText('Comment utiliser le simulateur')).toBeInTheDocument();
+  });
+});
+
+describe('lien de partage vs brouillon local', () => {
+  it('demande confirmation avant d’écraser un brouillon local, et respecte le refus', async () => {
+    localStorage.setItem(
+      'optimisator.simulation',
+      JSON.stringify({
+        state: { scenario: SASU_HOLDING_PRESET, whatIf: { caHt: 77_000 }, activeLayers: SASU_HOLDING_PRESET.activeLayers },
+        version: 1,
+      }),
+    );
+    const hash = buildHashShareUrl({ scenario: FULL_GROUP_PRESET, whatIf: {} }).split('#')[1]!;
+    window.history.replaceState(null, '', `/#${hash}`);
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<App />);
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalled());
+    expect(await screen.findByText(SASU_HOLDING_PRESET.name)).toBeInTheDocument();
+    expect(window.location.hash).toBe('');
+    confirmSpy.mockRestore();
+  });
+
+  it('applique le lien une fois confirmé', async () => {
+    localStorage.setItem(
+      'optimisator.simulation',
+      JSON.stringify({
+        state: { scenario: SASU_HOLDING_PRESET, whatIf: { caHt: 77_000 }, activeLayers: SASU_HOLDING_PRESET.activeLayers },
+        version: 1,
+      }),
+    );
+    const hash = buildHashShareUrl({ scenario: FULL_GROUP_PRESET, whatIf: {} }).split('#')[1]!;
+    window.history.replaceState(null, '', `/#${hash}`);
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+    expect(await screen.findByText(FULL_GROUP_PRESET.name)).toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+});
 });

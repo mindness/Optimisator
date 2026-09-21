@@ -16,6 +16,8 @@ export type FlowEdgePayload = FlowEdgeData & {
   onSelect?: (flow: FlowEdgeData) => void;
   /** Décalage vertical du libellé quand plusieurs flux partagent le même tracé. */
   labelOffset?: number;
+  /** Décalage horizontal quand plusieurs flux partent de la même entité. */
+  labelShift?: number;
   traceHighlight?: boolean;
 } & Record<string, unknown>;
 
@@ -179,9 +181,10 @@ export function FlowEdge({
         {/* Le centrage vit dans le transform inline : les utilitaires translate de Tailwind v4 s'y ajouteraient au lieu de le remplacer. */}
         <button
           type="button"
-          className="nodrag nopan absolute cursor-pointer border border-border bg-surface px-1.5 py-0.5 text-left shadow-sm hover:border-border-strong"
+          className="nodrag nopan card absolute cursor-pointer px-2 py-1 text-left hover:border-border-strong aria-pressed:border-accent"
+          aria-pressed={selected}
           style={{
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (data?.labelOffset ?? 0)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX + (data?.labelShift ?? 0)}px,${labelY + (data?.labelOffset ?? 0)}px)`,
             pointerEvents: 'all',
           }}
           title={data?.label ?? 'Flux'}
@@ -193,10 +196,10 @@ export function FlowEdge({
             data.onSelect(flowDataFromPayload(data));
           }}
         >
-          <span className="block text-xs font-medium uppercase tracking-wide text-fg-muted">
+          <span className="block text-xs text-fg-muted">
             {data?.label ?? 'Flux'}
           </span>
-          <span className="font-amount text-xs" style={{ color: stroke }}>
+          <span className="font-amount text-xs font-medium" style={{ color: stroke }}>
             {formatEuro(amount)}
           </span>
           {/* Friction fiscale du régime déduit du tracé : visible sans ouvrir de panneau. */}

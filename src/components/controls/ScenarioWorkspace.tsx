@@ -5,7 +5,6 @@ import { resolveScenarioGraph, type WhatIfInputs } from '@/core/engine';
 import {
   DEFAULT_SOCIAL_REGIME,
   DEFAULT_TAX_REGIME,
-  ENTITY_TYPES,
   ENTITY_TYPE_LABELS,
   FLOW_CATEGORIES,
   FLOW_LAYERS,
@@ -15,7 +14,7 @@ import {
   type FlowEdgeData,
   type ScenarioState,
 } from '@/core/types';
-import { adviseFlow, completeScenario, loadDraft, newId, saveDraft, ENGINE_COVERED_TYPES, OUT_OF_ENGINE_REASON, loadWorkspace, removeEntity, saveWorkspace, simulationIssues, snapshotScenario, updateWorkspaceEntity, updateWorkspaceFlow } from '@/core/scenarioWorkspace';
+import { adviseFlow, completeScenario, loadDraft, newId, saveDraft, ENGINE_COVERED_TYPES, ENTITY_INPUT_FIELDS, ENTITY_INPUT_FIELD_LABELS, OUT_OF_ENGINE_REASON, loadWorkspace, removeEntity, saveWorkspace, simulationIssues, snapshotScenario, updateWorkspaceEntity, updateWorkspaceFlow } from '@/core/scenarioWorkspace';
 import type { ConventionMatch } from '@/core/legal/conventions';
 import { FREELANCE_SASU_PRESET, FULL_GROUP_PRESET, SASU_HOLDING_PRESET } from '@/core/presets';
 import { LegalReference } from '@/components/inspector';
@@ -25,26 +24,28 @@ import { ScenarioFileButtons } from './ScenarioFileButtons';
 
 const STARTERS: ScenarioState[] = [FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET, FULL_GROUP_PRESET];
 
-const control = 'min-h-11 w-full border border-border bg-canvas px-2 text-sm text-fg';
-const button = 'min-h-11 border border-border bg-canvas px-3 text-sm text-fg hover:border-border-strong disabled:opacity-40';
-const OPCO = ['caHt', 'expensesHt', 'capital', 'openingTreasury', 'openingCca'];
-const fields: Record<string, string[]> = {
-  sasu: OPCO, eurl: OPCO, sarl: OPCO, micro_entreprise: ['caHt', 'expensesHt', 'openingTreasury'], entreprise_individuelle: ['caHt', 'expensesHt', 'openingTreasury'],
-  holding_sas: ['capital', 'openingTreasury', 'openingCca'], holding_sarl: ['capital', 'openingTreasury', 'openingCca'],
-  sci_is: ['rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
-  sci_ir: ['rentalIncomeHt', 'interestExpenses', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
-};
-const fieldNames: Record<string, string> = {
-  caHt: 'CA HT annuel', expensesHt: 'Charges HT annuelles', rentalIncomeHt: 'Loyers HT annuels', interestExpenses: 'Intérêts d’emprunt annuels',
-  buildingAmortization: 'Amortissement annuel', otherCharges: 'Autres charges annuelles', capital: 'Capital libéré',
-  openingTreasury: 'Trésorerie d’ouverture', openingCca: 'Compte courant d’associé d’ouverture',
-};
+const control = 'field';
+const button = 'btn';
 /** Champs à zéro par défaut ; les soldes d'ouverture restent absents tant qu'ils ne sont pas saisis. */
 const ZERO_DEFAULT = new Set(['caHt', 'expensesHt', 'rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges']);
 const TAX_REGIME_OPTIONS: Record<string, string> = { is: 'Impôt sur les sociétés', ir: 'Impôt sur le revenu (transparence)' };
 const SOCIAL_OPTIONS: Record<string, string> = { assimile_salarie: 'Assimilé salarié', tns: 'TNS (SSI)', none: 'Sans rémunération' };
 const MICRO_OPTIONS: Record<string, string> = { bnc: 'BNC (prestations libérales)', bic_services: 'BIC services', bic_vente: 'BIC vente', meuble_tourisme: 'Meublé de tourisme' };
 const OPERATING_TYPES: EntityType[] = ['sasu', 'eurl', 'sarl', 'micro_entreprise', 'entreprise_individuelle'];
+
+/** Palette rangée par famille : société opérante → holding/SCI → tiers, chaque groupe trié par libellé. */
+const PALETTE_GROUPS: ReadonlyArray<{ title: string; types: readonly EntityType[] }> = (() => {
+  const byLabel = (a: EntityType, b: EntityType) => ENTITY_TYPE_LABELS[a].localeCompare(ENTITY_TYPE_LABELS[b], 'fr');
+  const groups: ReadonlyArray<{ title: string; types: readonly EntityType[] }> = [
+    { title: 'Sociétés', types: ['sasu', 'eurl', 'sarl', 'micro_entreprise', 'entreprise_individuelle'] },
+    { title: 'Holdings et SCI', types: ['holding_sas', 'holding_sarl', 'sci_is', 'sci_ir'] },
+    { title: 'Tiers', types: ['person', 'client', 'vendor', 'tax_authority', 'urssaf', 'bank'] },
+  ];
+  return groups.map((group) => ({ title: group.title, types: [...group.types].sort(byLabel) }));
+})();
+
+/** Même tri pour le sélecteur de type d’une entité existante. */
+const SORTED_ENTITY_TYPES: readonly EntityType[] = PALETTE_GROUPS.flatMap((group) => group.types);
 const REGIME_CHOICE: Partial<Record<EntityType, boolean>> = { sasu: true, eurl: true, sarl: true, holding_sas: true, holding_sarl: true, entreprise_individuelle: true };
 const SOCIAL_CHOICE: Partial<Record<EntityType, boolean>> = { sasu: true, eurl: true, sarl: true, holding_sas: true, holding_sarl: true };
 const CATEGORY_LABELS: Record<string, string> = {
@@ -58,13 +59,13 @@ const PERIODICITY_LABELS: Record<string, string> = { annual: 'Annuel', monthly: 
 const label = (dict: Record<string, string>, key: string) => dict[key] ?? key;
 
 function defaultInputs(entityType: EntityType): Record<string, number> {
-  return Object.fromEntries((fields[entityType] ?? []).filter((key) => ZERO_DEFAULT.has(key)).map((key) => [key, 0]));
+  return Object.fromEntries((ENTITY_INPUT_FIELDS[entityType] ?? []).filter((key) => ZERO_DEFAULT.has(key)).map((key) => [key, 0]));
 }
 
 /** Section repliable : l'animation vit dans globals.css (.disclosure). */
 function Section({ title, count, children, open = false }: { title: string; count?: number; children: React.ReactNode; open?: boolean }) {
   return (
-    <details className="disclosure border border-border" open={open}>
+    <details className="disclosure card" open={open}>
       <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-sm font-semibold">
         {title}
         {count !== undefined && <span className="text-fg-muted">({count})</span>}
@@ -79,13 +80,13 @@ function FlowRegime({ scenario, flow }: { scenario: ScenarioState; flow: FlowEdg
   const advice = adviseFlow(scenario, flow);
   if (!advice?.regime) return null;
   return (
-    <div className="space-y-2 border border-border p-2" data-testid={`flow-regime-${flow.id}`}>
+    <div className="space-y-2 card p-2" data-testid={`flow-regime-${flow.id}`}>
       <p className="m-0 text-sm font-semibold">{advice.regime}</p>
       <p className="m-0 text-xs text-fg-muted">
         Friction fiscale <span className="font-amount">{(advice.rate! * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %</span>
         {' — '}<span className="font-amount">{formatEuro(advice.tax ?? 0)}</span> sur ce flux.
       </p>
-      {advice.warning && <p role="alert" className="m-0 border border-flow-alert p-2 text-xs">{advice.warning}</p>}
+      {advice.warning && <p role="alert" className="m-0 rounded-md bg-negative-soft p-2 text-xs text-negative">{advice.warning}</p>}
       <LegalReference flow={flow} />
     </div>
   );
@@ -114,6 +115,19 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
     setHistory((h) => ({ past: [...h.past, draft], future: h.future.slice(1) }));
     setDraftState(next);
   }
+  // Ctrl/⌘+Z annule, Ctrl/⌘+Maj+Z ou Ctrl+Y rétablit — sauf dans un champ, où le navigateur gère sa propre frappe.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || (event.target instanceof Element && event.target.closest('input, textarea, select'))) return;
+      const key = event.key.toLowerCase();
+      if (key !== 'z' && key !== 'y') return;
+      event.preventDefault();
+      if (key === 'y' || event.shiftKey) redo(); else undo();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   const [baseline, setBaseline] = useState<ScenarioState | null>(null);
   const [message, setMessage] = useState('Sauvegarde explicite dans ce navigateur. Le schéma peut dépasser la couverture du moteur.');
   const issues = simulationIssues(draft);
@@ -181,15 +195,21 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
             {STARTERS.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
           </select>
         </label>
-        <button className={button} onClick={undo} disabled={history.past.length === 0} aria-label="Annuler">Annuler</button>
-        <button className={button} onClick={redo} disabled={history.future.length === 0} aria-label="Rétablir">Rétablir</button>
-        <button className={button} onClick={reset}>Repartir de zéro</button>
-        <ScenarioFileButtons scenario={draft} whatIf={{}} onMessage={setMessage}
-          onImport={(scenario) => { setDraft(scenario); }} />
+        <div className="flex items-center gap-0.5" role="group" aria-label="Historique">
+          <button className="btn btn-ghost btn-sm px-2" onClick={undo} disabled={history.past.length === 0} aria-label="Annuler" title="Annuler (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3" /></svg>
+          </button>
+          <button className="btn btn-ghost btn-sm px-2" onClick={redo} disabled={history.future.length === 0} aria-label="Rétablir" title="Rétablir (Ctrl+Y)">
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3" /></svg>
+          </button>
+        </div>
+        <button className="btn btn-ghost" onClick={reset}>Repartir de zéro</button>
         <button className={button} onClick={save}>Enregistrer localement</button>
         <button className={button} onClick={load}>Charger la sauvegarde</button>
+        <ScenarioFileButtons scenario={draft} whatIf={{}} onMessage={setMessage}
+          onImport={(scenario) => { setDraft(scenario); }} />
         <button className={button} onClick={() => setBaseline(structuredClone(draft))}>Définir comme A</button>
-        <button className={button} disabled={!result} onClick={() => onApply({ ...draft, id: newId(), presetId: undefined })}>Ouvrir dans le simulateur</button>
+        <button className="btn btn-primary" disabled={!result} onClick={() => onApply({ ...draft, id: newId(), presetId: undefined })}>Ouvrir dans le simulateur</button>
       </header>
       <p role="status" className="m-0 px-3 py-2 text-sm text-fg-muted">{message}</p>
       <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[22rem_1fr]">
@@ -198,48 +218,53 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
 
           <Section title="Palette" open>
             <p className="m-0 text-xs text-fg-muted">Glissez une brique sur le schéma, ou cliquez pour l’ajouter. Chaque société porte son régime (IS / IR), le statut social de son dirigeant et ses soldes d’ouverture.</p>
-            <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
-              {ENTITY_TYPES.map((entityType) => (
-                <li key={entityType}>
-                  <button
-                    type="button"
-                    draggable
-                    className={`${button} w-full cursor-grab px-2 text-left active:cursor-grabbing`}
-                    title={OUT_OF_ENGINE_REASON[entityType] ?? 'Chiffré par le moteur.'}
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData(ENTITY_DRAG_TYPE, entityType);
-                      event.dataTransfer.effectAllowed = 'copy';
-                    }}
-                    onClick={() => addEntity(entityType)}
-                  >
-                    {ENTITY_TYPE_LABELS[entityType]}
-                    {!ENGINE_COVERED_TYPES.has(entityType) && <span className="block text-xs font-normal text-fg-muted">schéma seul</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {PALETTE_GROUPS.map((group) => (
+              <div key={group.title} className="mb-3 last:mb-0">
+                <p className="m-0 mb-1.5 text-[0.6875rem] font-semibold text-fg-muted">{group.title}</p>
+                <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
+                  {group.types.map((entityType) => (
+                    <li key={entityType}>
+                      <button
+                        type="button"
+                        draggable
+                        className={`${button} w-full cursor-grab px-2 text-left active:cursor-grabbing`}
+                        title={OUT_OF_ENGINE_REASON[entityType] ?? 'Chiffré par le moteur.'}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData(ENTITY_DRAG_TYPE, entityType);
+                          event.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        onClick={() => addEntity(entityType)}
+                      >
+                        {ENTITY_TYPE_LABELS[entityType]}
+                        {!ENGINE_COVERED_TYPES.has(entityType) && <span className="block text-xs font-normal text-fg-muted">schéma seul</span>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </Section>
 
           <Section title="Sociétés et acteurs" count={draft.entities.length} open>
             {draft.entities.length === 0 && <p className="m-0 text-sm text-fg-muted">Aucune entité : commencez par la palette.</p>}
             {draft.entities.map((item) => (
-              <details key={item.id} className="disclosure border border-border">
+              <details key={item.id} className="disclosure card">
                 <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-2 text-sm">
                   <span className="truncate">{item.label}</span>
                   <span className="shrink-0 text-xs text-fg-muted">{ENTITY_TYPE_LABELS[item.entityType]}</span>
                 </summary>
                 <div className="space-y-2 border-t border-border p-2">
                   <label className="block text-sm">Nom<input className={control} value={item.label} onChange={(event) => patchEntity(item.id, { label: event.target.value })} /></label>
-                  <label className="block text-sm">Type<select className={control} value={item.entityType} onChange={(event) => patchEntity(item.id, { entityType: event.target.value as EntityType, inputs: defaultInputs(event.target.value as EntityType) })}>{ENTITY_TYPES.map((type) => <option key={type} value={type}>{ENTITY_TYPE_LABELS[type]}</option>)}</select></label>
+                  <label className="block text-sm">Type<select className={control} value={item.entityType} onChange={(event) => patchEntity(item.id, { entityType: event.target.value as EntityType, inputs: defaultInputs(event.target.value as EntityType) })}>{SORTED_ENTITY_TYPES.map((type) => <option key={type} value={type}>{ENTITY_TYPE_LABELS[type]}</option>)}</select></label>
                   {REGIME_CHOICE[item.entityType] && <label className="block text-sm">Impôt sur les bénéfices<select className={control} value={item.taxRegime ?? DEFAULT_TAX_REGIME[item.entityType] ?? 'is'} onChange={(event) => patchEntity(item.id, { taxRegime: event.target.value as EntityNodeData['taxRegime'] })}>{Object.entries(TAX_REGIME_OPTIONS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>}
                   {SOCIAL_CHOICE[item.entityType] && <label className="block text-sm">Statut social du dirigeant<select className={control} value={item.socialRegime ?? DEFAULT_SOCIAL_REGIME[item.entityType] ?? 'none'} onChange={(event) => patchEntity(item.id, { socialRegime: event.target.value as EntityNodeData['socialRegime'] })}>{Object.entries(SOCIAL_OPTIONS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>}
-                  {item.entityType === 'micro_entreprise' && <fieldset className="space-y-1 border border-border p-2 text-sm"><legend className="text-xs text-fg-muted">Options micro</legend>
+                  {item.entityType === 'micro_entreprise' && <fieldset className="space-y-1 card p-2 text-sm"><legend className="text-xs text-fg-muted">Options micro</legend>
                     <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={item.options?.versementLiberatoire ?? false} onChange={(event) => patchEntity(item.id, { options: { ...item.options, versementLiberatoire: event.target.checked } })} />Versement libératoire de l’IR (CGI 151-0)</label>
                     <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={item.options?.acre ?? false} onChange={(event) => patchEntity(item.id, { options: { ...item.options, acre: event.target.checked } })} />ACRE (cotisations −25 % les 12 premiers mois)</label>
                   </fieldset>}
                   {OPERATING_TYPES.includes(item.entityType) && <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={item.options?.franchiseTva ?? item.entityType === 'micro_entreprise'} onChange={(event) => patchEntity(item.id, { options: { ...item.options, franchiseTva: event.target.checked } })} />Franchise en base de TVA (CGI 293 B)</label>}
                   {item.entityType === 'micro_entreprise' && <label className="block text-sm">Catégorie micro<select className={control} value={item.microCategory ?? 'bnc'} onChange={(event) => patchEntity(item.id, { microCategory: event.target.value as EntityNodeData['microCategory'] })}>{Object.entries(MICRO_OPTIONS).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>}
-                  {(fields[item.entityType] ?? []).map((key) => <label key={key} className="block text-sm">{fieldNames[key]} (€)<input type="number" min="0" step="0.01" className={control} value={item.inputs?.[key] ?? ''} placeholder="0" onChange={(event) => { const inputs = { ...item.inputs }; if (Number.isFinite(event.target.valueAsNumber)) inputs[key] = event.target.valueAsNumber; else delete inputs[key]; patchEntity(item.id, { inputs }); }} /></label>)}
+                  {(ENTITY_INPUT_FIELDS[item.entityType] ?? []).map((key) => <label key={key} className="block text-sm">{ENTITY_INPUT_FIELD_LABELS[key]} (€)<input type="number" min="0" step="0.01" className={control} value={item.inputs?.[key] ?? ''} placeholder="0" onChange={(event) => { const inputs = { ...item.inputs }; if (Number.isFinite(event.target.valueAsNumber)) inputs[key] = event.target.valueAsNumber; else delete inputs[key]; patchEntity(item.id, { inputs }); }} /></label>)}
                   <button className={button} onClick={() => change(removeEntity(draft, item.id))}>Supprimer cette entité et ses flux</button>
                 </div>
               </details>
@@ -257,7 +282,7 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
           <Section title="Flux annuels" count={draft.flows.length} open>
             <p className="m-0 text-xs text-fg-muted">Reliez deux nœuds sur le schéma ou ajoutez un flux. Le tracé propose sa nature et son régime (mère-fille, PFU, management fees) ; vous restez libre de le changer.</p>
             {draft.flows.map((item) => (
-              <details key={item.id} className="disclosure border border-border">
+              <details key={item.id} className="disclosure card">
                 <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-2 text-sm">
                   <span className="truncate">{item.label}</span>
                   <span className="font-amount shrink-0 text-xs text-fg-muted">{formatEuro(item.amount)}</span>
@@ -283,27 +308,30 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
           </Section>
         </aside>
 
-        <div className="flex min-w-0 flex-col gap-3">
-          <p className="m-0 text-sm text-fg-muted">Schéma de saisie : montants bruts/HT saisis, pas des résultats calculés. Déplacez les nœuds pour organiser la vue.</p>
-          <FlowCanvas scenario={draft} entities={draft.entities.map((item) => ({ ...item, metrics: undefined }))} className="flex-1 border border-border"
-            onConnectEntities={addFlow} onDropEntityType={addEntity}
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
+          <p className="m-0 text-sm text-fg-muted">Sur une carte : cliquez un montant pour le modifier, double-cliquez le nom pour le changer, × ou Suppr pour la supprimer (Échap désélectionne, Ctrl+Z annule).</p>
+          <FlowCanvas scenario={draft} entities={draft.entities.map((item) => ({ ...item, metrics: undefined }))} className="min-h-[28rem] flex-1 card"
+            onConnectEntities={addFlow} onDropEntityType={addEntity} onDeleteEntity={(id) => change(removeEntity(draft, id))} onRenameEntity={(id, label) => patchEntity(id, { label })}
+            onPatchEntityInputs={(id, key, value) => patchEntity(id, { inputs: { ...draft.entities.find((e) => e.id === id)?.inputs, [key]: value } })}
             onPositionsChange={(nodePositions) => change({ ...draft, nodePositions })} />
           {issues.length > 0 && (
-            <div role="alert" className="space-y-2 border border-flow-alert p-3">
+            <div role="alert" className="space-y-2 rounded-md bg-negative-soft p-3">
               <strong>Simulation indisponible pour ce schéma</strong>
               <ul className="m-0 list-disc pl-4">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
               <button className={button} onClick={complete}>Compléter pour le calcul</button>
               <span className="ml-2 text-xs text-fg-muted">ajoute la SASU, les tiers et les flux obligatoires manquants, à zéro.</span>
             </div>
           )}
-          {result && <p className="text-sm text-fg-muted">Calcul pédagogique possible, sous les limites du moteur : {result.warnings.join(' ')}</p>}
-          <section className="border-t border-border pt-3" aria-label="Comparaison A B">
-            <h3 className="font-semibold">A / B — référence et brouillon courant</h3>
-            <p className="text-sm text-fg-muted">Recalcul avec le référentiel actuel. Comparaison manuelle, pas recommandation ni recherche automatique d’un optimum.</p>
-            {reference && result ? <table className="w-full text-right text-sm"><caption className="text-left">A : {baseline?.name} · B : {draft.name}</caption><thead><tr><th>Indicateur</th><th>A</th><th>B</th><th>Écart B − A</th></tr></thead><tbody>
-              {(['netGroupCash', 'netPersonalCash'] as const).map((key) => <tr key={key}><th className="text-left">{key === 'netGroupCash' ? 'Trésorerie groupe' : 'Personnel avant IR rémunération'}</th><td className="font-amount">{formatEuro(reference.summary[key])}</td><td className="font-amount">{formatEuro(result.summary[key])}</td><td className="font-amount">{formatEuro(result.summary[key] - reference.summary[key])}</td></tr>)}
-            </tbody></table> : <p className="text-sm">Définissez une référence A ; les deux scénarios doivent être couverts par le moteur.</p>}
-          </section>
+          <Section title="Notes du moteur et comparaison A / B">
+            {result && <p className="max-w-[38rem] text-sm text-fg-muted">Calcul pédagogique possible, sous les limites du moteur : {result.warnings.join(' ')}</p>}
+            <section aria-label="Comparaison A B">
+              <h3 className="font-semibold">A / B — référence et brouillon courant</h3>
+              <p className="text-sm text-fg-muted">Recalcul avec le référentiel actuel. Comparaison manuelle, pas recommandation ni recherche automatique d’un optimum.</p>
+              {reference && result ? <table className="w-full text-right text-sm"><caption className="text-left">A : {baseline?.name} · B : {draft.name}</caption><thead><tr><th>Indicateur</th><th>A</th><th>B</th><th>Écart B − A</th></tr></thead><tbody>
+                {(['netGroupCash', 'netPersonalCash'] as const).map((key) => <tr key={key}><th className="text-left">{key === 'netGroupCash' ? 'Trésorerie groupe' : 'Personnel avant IR rémunération'}</th><td className="font-amount">{formatEuro(reference.summary[key])}</td><td className="font-amount">{formatEuro(result.summary[key])}</td><td className="font-amount">{formatEuro(result.summary[key] - reference.summary[key])}</td></tr>)}
+              </tbody></table> : <p className="text-sm">Définissez une référence A ; les deux scénarios doivent être couverts par le moteur.</p>}
+            </section>
+          </Section>
         </div>
       </div>
     </section>

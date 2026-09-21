@@ -16,7 +16,8 @@ beforeAll(() => {
   globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
 });
 
-afterEach(cleanup);
+// Le brouillon d'atelier vit en sessionStorage : sans purge, il fuit d'un test au suivant.
+afterEach(() => { cleanup(); sessionStorage.clear(); });
 
 function entityList() {
   return screen.getByText('Sociétés et acteurs').closest('details') as HTMLDetailsElement;
@@ -33,6 +34,19 @@ describe('ScenarioWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Repartir de zéro' }));
     expect(screen.getByText('Aucune entité : commencez par la palette.')).toBeInTheDocument();
     // getByRole parcourt tout le DOM : lent sous 20 workers jsdom.
+  }, 15_000);
+
+  it('undoes and redoes with Ctrl+Z / Ctrl+Y', () => {
+    render(<ScenarioWorkspace initialScenario={FREELANCE_SASU_PRESET} whatIf={{}} onApply={() => {}} />);
+    const count = () => within(entityList()).getAllByRole('group').length;
+
+    const before = count();
+    fireEvent.click(screen.getByRole('button', { name: 'Holding (SAS)' }));
+    expect(count()).toBe(before + 1);
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    expect(count()).toBe(before);
+    fireEvent.keyDown(window, { key: 'y', ctrlKey: true });
+    expect(count()).toBe(before + 1);
   }, 15_000);
 
   it('lists conventions between the parties and adds their flow', () => {

@@ -130,7 +130,7 @@ export function ShareModal({
 
   return (
     <div
-      className="share-backdrop fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-4"
+      className="share-backdrop fixed inset-0 z-50 flex items-center justify-center bg-fg/40 p-4 backdrop-blur-[2px]"
       role="presentation"
       onClick={(e) => {
         // Seul le fond ferme : pas de handler souris sur la boîte de dialogue.
@@ -141,7 +141,7 @@ export function ShareModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-modal-title"
-        className="w-full max-w-md border border-border bg-surface p-4 text-fg shadow-none"
+        className="w-full max-w-md rounded-md border border-border bg-surface p-5 text-fg shadow-float"
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
@@ -160,7 +160,7 @@ export function ShareModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 min-w-11 items-center justify-center border border-border bg-surface px-3 text-sm text-fg hover:border-border-strong"
+            className="btn btn-ghost btn-sm -mr-2"
             aria-label="Fermer le partage"
           >
             Fermer
@@ -173,7 +173,7 @@ export function ShareModal({
               type="button"
               onClick={() => void copyShortLink()}
               disabled={status === 'saving'}
-              className="inline-flex h-11 items-center justify-center border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-flow-cash disabled:opacity-60"
+              className="btn btn-primary h-10"
             >
               {status === 'saving' ? 'Enregistrement…' : 'Copier le lien court'}
             </button>
@@ -181,7 +181,7 @@ export function ShareModal({
           <button
             type="button"
             onClick={() => void copyHashLink()}
-            className="inline-flex h-11 items-center justify-center border border-border-strong bg-surface px-3 text-sm font-medium text-fg hover:border-flow-cash"
+            className="btn h-10"
           >
             {shortLinkAvailable ? 'Copier le lien hash (hors-ligne)' : 'Copier le lien de partage'}
           </button>
@@ -189,7 +189,7 @@ export function ShareModal({
 
         {(shortUrl || hashUrl) && (
           <p
-            className="mt-3 break-all font-mono text-xs text-fg-muted tabular-nums"
+            className="mt-3 break-all rounded-md bg-surface-sunken px-3 py-2 font-mono text-xs text-fg-muted tabular-nums"
             data-testid="share-url-preview"
           >
             {shortUrl ?? `${hashUrl.slice(0, 72)}…`}
@@ -198,7 +198,7 @@ export function ShareModal({
 
         {message && (
           <p
-            className={`mt-2 text-sm ${status === 'error' ? 'text-flow-alert' : 'text-flow-cash'}`}
+            className={`mt-2 text-sm ${status === 'error' ? 'text-negative' : 'text-positive'}`}
             role="status"
           >
             {message}

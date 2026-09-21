@@ -30,15 +30,14 @@ export function MoneyTracer({
       data-testid="money-tracer"
       aria-label="Money Tracer"
     >
-      <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-        Money Tracer
-      </h2>
-      <p className="m-0 text-xs text-fg-muted">
-        Injectez un montant test pour tracer le parcours cash et les frictions fiscales.
+      <h2 className="panel-title">Suivre un euro</h2>
+      <p className="panel-help">
+        Injectez un montant test comme chiffre d’affaires : le schéma surligne son parcours et
+        chaque prélèvement rencontré.
       </p>
 
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="flex min-w-[8rem] flex-1 flex-col gap-1 text-xs font-medium text-fg">
+      <div className="flex items-end gap-2">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-medium text-fg">
           Montant (€)
           <input
             type="number"
@@ -46,23 +45,23 @@ export function MoneyTracer({
             step={1000}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="font-amount border border-border bg-canvas px-2 py-1.5 text-sm text-fg"
+            className="field font-amount"
             aria-label="Montant d'injection Money Tracer"
           />
         </label>
         <button
           type="button"
           data-testid="money-tracer-inject"
-          className="border border-flow-cash bg-flow-cash/10 px-3 py-1.5 text-sm font-medium text-fg hover:bg-flow-cash/20"
+          className="btn btn-primary"
           onClick={() => onInject(amount)}
         >
-          Injecter
+          Tracer
         </button>
         {moneyTrace.active ? (
           <button
             type="button"
             data-testid="money-tracer-clear"
-            className="border border-border px-3 py-1.5 text-sm text-fg-muted hover:border-border-strong hover:text-fg"
+            className="btn btn-ghost"
             onClick={onClear}
           >
             Effacer
@@ -72,13 +71,13 @@ export function MoneyTracer({
 
       {moneyTrace.active ? (
         <div
-          className="flex flex-wrap items-center gap-2 border border-border bg-canvas px-2 py-1.5"
+          className="flex flex-col gap-1 rounded-md bg-accent-soft px-3 py-2"
           data-testid="money-tracer-status"
           role="status"
         >
-          <MetricBadge amount={moneyTrace.amount} label="Trace" tone="cash" />
-          <span className="font-amount text-xs text-fg-muted">
-            {moneyTrace.pathFlowIds.length} flux sur le parcours
+          <MetricBadge amount={moneyTrace.amount} label="Montant tracé" tone="cash" />
+          <span className="text-xs text-fg-muted">
+            {moneyTrace.pathFlowIds.length} flux sur le parcours — surlignés sur le schéma.
           </span>
         </div>
       ) : null}

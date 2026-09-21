@@ -91,7 +91,7 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
         <label className="flex items-center gap-2 text-xs text-fg-muted">
           Horizon
           <select
-            className="min-h-11 border border-border bg-surface px-2 text-sm text-fg"
+            className="field w-auto"
             value={horizon}
             onChange={(e) => setHorizon(Number(e.target.value))}
           >
@@ -120,7 +120,7 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
         />
       </div>
 
-      <figure className="m-0 border border-border bg-surface p-3">
+      <figure className="m-0 card p-3">
         <figcaption className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-fg-muted">
           {SERIES.map((s) => (
             <span key={s.key} className="inline-flex items-center gap-1.5">
@@ -193,19 +193,19 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
             </text>
           ))}
         </svg>
-        <p className="m-0 min-h-5 font-amount text-xs text-fg-muted" aria-live="polite">
+        <p className="m-0 min-h-5 text-xs text-fg-muted" aria-live="polite">
           {active
             ? `${active.year} — groupe ${formatEuro(active.cumulativeGroupCash)} · perso ${formatEuro(active.cumulativePersonalCash)}`
             : 'Survolez la courbe pour lire une année.'}
         </p>
       </figure>
 
-      <details className="border border-border p-3 text-sm">
+      <details className="disclosure card p-3 text-sm">
         <summary className="min-h-11 cursor-pointer text-fg">Voir le détail par exercice</summary>
         <div className="overflow-x-auto">
           <table className="mt-2 w-full border-collapse text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-fg-muted">
+              <tr className="text-left text-xs font-medium text-fg-muted">
                 <th scope="col" className="py-1 pr-3 font-medium">Année</th>
                 <th scope="col" className="py-1 pr-3 font-medium">CA HT</th>
                 <th scope="col" className="py-1 pr-3 font-medium">Charges</th>
@@ -230,7 +230,7 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
         </div>
       </details>
 
-      <div className="border border-flow-alert p-3">
+      <div className="rounded-md bg-negative-soft p-3">
         <h3 className="m-0 text-sm font-semibold text-fg">Ce que cette projection ne voit pas</h3>
         <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-fg-muted">
           {warnings.map((warning) => (
@@ -255,7 +255,7 @@ function GrowthSelect({
     <label className="flex items-center gap-2 text-xs text-fg-muted">
       {label}
       <select
-        className="min-h-11 border border-border bg-surface px-2 text-sm text-fg"
+        className="field w-auto"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       >
@@ -272,8 +272,8 @@ function GrowthSelect({
 
 function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <div className="border border-border p-3">
-      <div className="text-xs uppercase tracking-wide text-fg-muted">{label}</div>
+    <div className="card p-3">
+      <div className="text-xs font-medium text-fg-muted">{label}</div>
       <div className={`mt-1 font-amount text-xl ${tone}`}>{value}</div>
     </div>
   );

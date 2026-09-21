@@ -16,14 +16,14 @@ const STATUS_LABEL: Record<SourcedRateStatus, string> = {
 function AlertBadge({ alert }: { alert: LegalAlert }) {
   const tone =
     alert.severity === 'danger'
-      ? 'border-flow-alert bg-flow-alert/10 text-flow-alert'
+      ? 'bg-negative-soft text-negative'
       : alert.severity === 'warning'
-        ? 'border-flow-is bg-flow-is/10 text-flow-is'
-        : 'border-border bg-canvas text-fg-muted';
+        ? 'bg-disclaimer-bg text-disclaimer-fg'
+        : 'bg-surface-sunken text-fg-muted';
 
   return (
     <span
-      className={`inline-flex items-center border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${tone}`}
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${tone}`}
       data-testid={`alert-badge-${alert.code}`}
       title={alert.detail}
     >
@@ -34,10 +34,10 @@ function AlertBadge({ alert }: { alert: LegalAlert }) {
 
 function ArticleBlock({ article }: { article: LegalArticle }) {
   return (
-    <article className="border border-border bg-canvas px-2.5 py-2">
+    <article className="rounded-md bg-surface-sunken px-3 py-2.5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="m-0 text-sm font-semibold text-fg">{article.ref}</h4>
-        <span className="text-xs uppercase tracking-wide text-fg-muted">
+        <span className="text-xs text-fg-muted">
           {STATUS_LABEL[article.status]} · {article.asOf}
         </span>
       </div>
@@ -49,7 +49,7 @@ function ArticleBlock({ article }: { article: LegalArticle }) {
           href={article.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-1.5 inline-block text-xs text-flow-vat underline-offset-2 hover:underline"
+          className="mt-1.5 inline-block text-xs font-medium text-accent hover:underline"
         >
           Légifrance
         </a>
@@ -91,9 +91,7 @@ export function LegalReference({ flow, className = '' }: LegalReferenceProps) {
       data-testid="legal-reference"
       aria-label="Références légales"
     >
-      <h3 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-        Références légales
-      </h3>
+      <h3 className="panel-title">Références légales</h3>
 
       {alerts.length > 0 ? (
         <div

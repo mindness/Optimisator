@@ -4,6 +4,7 @@ import { MetricBadge } from '@/components/common/MetricBadge';
 import { calculateSciTax } from '@/core/engine/calculator';
 import type { EntityNodeData } from '@/core/types';
 
+import { EditableEntityInputs } from '../EditableEntityInputs';
 import { EntityNodeShell, type EntityFlowNode } from '../EntityNode';
 
 function resolveSciMetrics(data: EntityNodeData) {
@@ -33,12 +34,20 @@ function resolveSciMetrics(data: EntityNodeData) {
   };
 }
 
-export function SciNode({ data, selected }: NodeProps<EntityFlowNode>) {
+export function SciNode({ data, selected, sourcePosition, targetPosition }: NodeProps<EntityFlowNode>) {
   const { fiscalResult, corporateTax, cashFlow } = resolveSciMetrics(data);
   const kind = data.entityType === 'sci_ir' ? 'SCI IR' : 'SCI IS';
 
+  if (data.onPatchInput) {
+    return (
+      <EntityNodeShell data={data} selected={selected} sourcePosition={sourcePosition} targetPosition={targetPosition} subtitle={kind}>
+        <EditableEntityInputs data={data} />
+      </EntityNodeShell>
+    );
+  }
+
   return (
-    <EntityNodeShell data={data} selected={selected} subtitle={kind}>
+    <EntityNodeShell data={data} selected={selected} sourcePosition={sourcePosition} targetPosition={targetPosition} subtitle={kind}>
       {cashFlow != null ? (
         <MetricBadge amount={cashFlow} label="Cash" tone="cash" />
       ) : null}

@@ -3,7 +3,7 @@ import type { WhatIfInputs } from '@/core/engine';
 import type { ScenarioState } from '@/core/types';
 import { exportScenarioFile, parseScenarioFile, scenarioFileName } from '@/core/scenarioWorkspace';
 
-const button = 'inline-flex min-h-11 items-center justify-center border border-border bg-surface px-3 text-sm font-medium text-fg hover:border-border-strong';
+const button = 'btn';
 
 /** Export / import d'un schéma en fichier `.json` : aucun serveur, aucun compte. */
 export function ScenarioFileButtons({ scenario, whatIf, onImport, onMessage }: {
@@ -39,8 +39,8 @@ export function ScenarioFileButtons({ scenario, whatIf, onImport, onMessage }: {
 
   return (
     <>
-      <button type="button" className={button} onClick={download}>Exporter (.json)</button>
-      <button type="button" className={button} onClick={() => fileInput.current?.click()}>Importer (.json)</button>
+      <button type="button" className={button} onClick={download}>Exporter</button>
+      <button type="button" className={button} onClick={() => fileInput.current?.click()}>Importer</button>
       <input ref={fileInput} type="file" accept="application/json,.json" className="sr-only" aria-label="Importer un schéma JSON"
         data-testid="scenario-file-input" onChange={(event) => void upload(event.target.files?.[0])} />
     </>

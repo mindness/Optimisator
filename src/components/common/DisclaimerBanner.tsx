@@ -10,7 +10,7 @@ export function DisclaimerBanner({ className = '' }: DisclaimerBannerProps) {
     <aside
       role="note"
       aria-label="Avertissement légal"
-      className={`border border-disclaimer-border bg-disclaimer-bg px-3 py-2 text-sm text-disclaimer-fg ${className}`.trim()}
+      className={`rounded-md border border-disclaimer-border bg-disclaimer-bg px-3 py-2 text-sm text-disclaimer-fg ${className}`.trim()}
     >
       <p className="m-0 leading-snug">{DEFAULT_TEXT}</p>
     </aside>

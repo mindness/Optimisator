@@ -143,27 +143,23 @@ export function StepBreakdown({
       data-testid="step-breakdown"
       aria-label="Décomposition du calcul"
     >
-      <h3 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-        Calcul pas à pas
-      </h3>
-      <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
+      <h3 className="panel-title">Calcul pas à pas</h3>
+      <ol className="m-0 flex list-none flex-col divide-y divide-border p-0">
         {steps.map((step, index) => (
           <li
             key={`${step.label}-${index}`}
-            className="flex flex-wrap items-baseline justify-between gap-2 border border-border bg-canvas px-2 py-1.5"
+            className="flex flex-wrap items-baseline justify-between gap-2 py-2"
           >
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-medium text-fg">
-                <span className="mr-1.5 text-fg-muted" aria-hidden>
-                  {index + 1}.
-                </span>
-                {step.label}
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+              <span className="step-no" aria-hidden>{index + 1}</span>
+              <span className="min-w-0">
+                <span className="block text-xs font-medium text-fg">{step.label}</span>
+                {step.formula ? (
+                  <span className="block font-mono text-[0.6875rem] text-fg-muted">
+                    {step.formula}
+                  </span>
+                ) : null}
               </span>
-              {step.formula ? (
-                <p className="m-0 mt-0.5 font-mono text-xs text-fg-muted">
-                  {step.formula}
-                </p>
-              ) : null}
             </div>
             <MetricBadge amount={step.amount} tone="neutral" />
           </li>

@@ -5,6 +5,12 @@ export type TimelineBarProps = {
   className?: string;
 };
 
+const Icon = ({ d }: { d: string }) => (
+  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d={d} />
+  </svg>
+);
+
 export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
   const {
     steps,
@@ -22,50 +28,50 @@ export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
 
   return (
     <section
-      className={`border-t border-border bg-surface px-3 py-2.5 md:px-4 ${className}`.trim()}
+      className={`card flex flex-col gap-2.5 px-3 py-2.5 md:px-4 ${className}`.trim()}
       aria-label="Timeline Replay"
       data-testid="timeline-bar"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1" role="group" aria-label="Contrôles timeline">
           <button
             type="button"
-            className="border border-border bg-canvas px-2.5 py-1 text-sm text-fg hover:border-border-strong"
+            className="btn btn-sm px-2"
             onClick={prev}
             aria-label="Étape précédente"
             disabled={stepIndex <= 0}
           >
-            Préc.
+            <Icon d="m15 18-6-6 6-6" />
           </button>
           {playing ? (
             <button
               type="button"
-              className="border border-border bg-canvas px-2.5 py-1 text-sm font-medium text-fg hover:border-border-strong"
+              className="btn btn-sm btn-primary px-2"
               onClick={pause}
               aria-label="Pause"
               data-testid="timeline-pause"
             >
-              Pause
+              <Icon d="M6 5h4v14H6zM14 5h4v14h-4z" />
             </button>
           ) : (
             <button
               type="button"
-              className="border border-border bg-canvas px-2.5 py-1 text-sm font-medium text-fg hover:border-border-strong"
+              className="btn btn-sm btn-primary px-2"
               onClick={play}
               aria-label="Lecture"
               data-testid="timeline-play"
             >
-              Play
+              <Icon d="M7 4v16l13-8z" />
             </button>
           )}
           <button
             type="button"
-            className="border border-border bg-canvas px-2.5 py-1 text-sm text-fg hover:border-border-strong"
+            className="btn btn-sm px-2"
             onClick={next}
             aria-label="Étape suivante"
             disabled={stepIndex >= steps.length - 1}
           >
-            Suiv.
+            <Icon d="m9 18 6-6-6-6" />
           </button>
         </div>
 
@@ -80,7 +86,7 @@ export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
       </div>
 
       <div
-        className="mt-2 h-1.5 w-full overflow-hidden border border-border bg-canvas"
+        className="h-1 w-full overflow-hidden rounded-full bg-border"
         role="progressbar"
         aria-valuemin={1}
         aria-valuemax={steps.length}
@@ -88,12 +94,12 @@ export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
         aria-label="Progression timeline"
       >
         <div
-          className="h-full origin-left bg-flow-vat transition-transform duration-300 ease-out motion-reduce:transition-none"
+          className="h-full origin-left rounded-full bg-accent transition-transform duration-300 ease-out motion-reduce:transition-none"
           style={{ transform: `scaleX(${progress})` }}
         />
       </div>
 
-      <ol className="mt-2 flex list-none flex-wrap gap-1 p-0" aria-label="Saut d'étape">
+      <ol className="m-0 flex list-none flex-wrap gap-1 p-0" aria-label="Saut d'étape">
         {steps.map((step, i) => {
           const active = i === stepIndex;
           return (
@@ -102,15 +108,12 @@ export function TimelineBar({ timeline, className = '' }: TimelineBarProps) {
                 type="button"
                 onClick={() => jump(i)}
                 aria-current={active ? 'step' : undefined}
+                aria-pressed={active}
                 aria-label={`Aller à ${step.label}`}
-                className={[
-                  'border px-2 py-0.5 text-xs font-medium uppercase tracking-wide',
-                  active
-                    ? 'border-flow-vat bg-flow-vat/15 text-fg'
-                    : 'border-border bg-canvas text-fg-muted hover:border-border-strong hover:text-fg',
-                ].join(' ')}
+                className="chip h-7 px-2"
               >
-                {step.order}. {step.label}
+                <span className="font-amount text-[0.6875rem] text-fg-muted">{step.order}</span>
+                {step.label}
               </button>
             </li>
           );

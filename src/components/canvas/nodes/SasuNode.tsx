@@ -4,6 +4,7 @@ import { MetricBadge } from '@/components/common/MetricBadge';
 import { calculateCorporateTax } from '@/core/engine/calculator';
 import type { EntityNodeData } from '@/core/types';
 
+import { EditableEntityInputs } from '../EditableEntityInputs';
 import { EntityNodeShell, type EntityFlowNode } from '../EntityNode';
 
 function resolveSasuMetrics(data: EntityNodeData) {
@@ -32,12 +33,21 @@ function resolveSasuMetrics(data: EntityNodeData) {
   };
 }
 
-export function SasuNode({ data, selected }: NodeProps<EntityFlowNode>) {
+export function SasuNode({ data, selected, sourcePosition, targetPosition }: NodeProps<EntityFlowNode>) {
   const { fiscalResult, corporateTax, caHt } = resolveSasuMetrics(data);
   const treasury = data.metrics?.treasury;
 
+  // Atelier Architecture : édition directe des paramètres saisis, pas de résultat calculé sur le schéma de saisie.
+  if (data.onPatchInput) {
+    return (
+      <EntityNodeShell data={data} selected={selected} sourcePosition={sourcePosition} targetPosition={targetPosition} subtitle="SASU">
+        <EditableEntityInputs data={data} />
+      </EntityNodeShell>
+    );
+  }
+
   return (
-    <EntityNodeShell data={data} selected={selected} subtitle="SASU">
+    <EntityNodeShell data={data} selected={selected} sourcePosition={sourcePosition} targetPosition={targetPosition} subtitle="SASU">
       {caHt > 0 ? (
         <MetricBadge amount={caHt} label="CA HT" tone="cash" />
       ) : null}

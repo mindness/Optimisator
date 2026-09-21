@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ScenarioState } from '@/core/types';
 import { newId, ownershipIssues } from '@/core/scenarioWorkspace';
 
-const control = 'min-h-11 w-full border border-border bg-canvas px-2 text-sm text-fg';
+const control = 'min-h-11 w-full card bg-canvas px-2 text-sm text-fg';
 export function OwnershipEditor({ scenario, onChange }: { scenario: ScenarioState; onChange: (scenario: ScenarioState) => void }) {
   const [ownerId, setOwnerId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -15,7 +15,7 @@ export function OwnershipEditor({ scenario, onChange }: { scenario: ScenarioStat
   const next = { ...scenario, ownerships: [...(scenario.ownerships ?? []), candidate] };
   const issues = ownershipIssues(next);
   const label = (id: string) => scenario.entities.find((entity) => entity.id === id)?.label ?? id;
-  return <fieldset className="space-y-2 border border-border p-3">
+  return <fieldset className="space-y-2 card p-3">
     <legend>Détention du capital</legend>
     <p className="text-xs text-fg-muted">Pointillés = capital, pas de cash. Les parts non renseignées restent inconnues. Ces liens ne valident pas le régime mère-fille.</p>
     <label className="block text-sm">Associé<select className={control} value={owner} onChange={(event) => setOwnerId(event.target.value)}>{owners.map((entity) => <option key={entity.id} value={entity.id}>{entity.label}</option>)}</select></label>

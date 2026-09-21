@@ -63,14 +63,14 @@ export function MetricBadge({
 
   return (
     <span
-      className={`metric-badge inline-flex max-w-full items-baseline gap-1.5 border border-border px-2 py-0.5 text-sm ${className}`.trim()}
+      className={`metric-badge inline-flex max-w-full items-baseline justify-between gap-3 text-sm ${className}`.trim()}
     >
       {label ? (
-        <span className="font-sans text-xs font-medium uppercase tracking-wide text-fg-muted">
+        <span className="min-w-0 font-sans text-xs text-fg-muted">
           {label}
         </span>
       ) : null}
-      <span className={`font-amount shrink-0 whitespace-nowrap ${toneClass[tone]}`}>{formatted}</span>
+      <span className={`font-amount shrink-0 whitespace-nowrap font-medium ${toneClass[tone]}`}>{formatted}</span>
     </span>
   );
 }

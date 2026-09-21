@@ -31,15 +31,16 @@ export function LayerSwitcher({
 
   return (
     <fieldset
-      className={`m-0 border-0 p-0 ${className}`.trim()}
+      className={`m-0 flex flex-col gap-2 border-0 p-0 ${className}`.trim()}
       data-testid="layer-switcher"
     >
-      <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-        Calques
-      </legend>
+      <legend className="panel-title mb-1">Calques affichés</legend>
+      <p className="panel-help">
+        Filtrez le schéma par famille de flux : une vue prête à l’emploi, ou calque par calque.
+      </p>
       {onSelectLayers ? (
         <div
-          className="mb-2 flex flex-wrap gap-1.5"
+          className="flex flex-wrap gap-1.5"
           role="group"
           aria-label="Presets de vue"
           data-testid="view-presets"
@@ -54,12 +55,7 @@ export function LayerSwitcher({
                 title={preset.description}
                 data-view-preset={preset.id}
                 onClick={() => onSelectLayers(preset.layers)}
-                className={[
-                  'border px-2 py-1 text-xs',
-                  isOn
-                    ? 'border-flow-div bg-flow-div/12 text-fg'
-                    : 'border-border bg-canvas text-fg-muted hover:border-border-strong',
-                ].join(' ')}
+                className="chip"
               >
                 {preset.label}
               </button>
@@ -77,13 +73,12 @@ export function LayerSwitcher({
               aria-pressed={isOn}
               data-layer={layer}
               onClick={() => onToggle(layer)}
-              className={[
-                'border px-2 py-1 text-xs font-medium',
-                isOn
-                  ? 'border-flow-vat bg-flow-vat/12 text-fg'
-                  : 'border-border bg-canvas text-fg-muted hover:border-border-strong',
-              ].join(' ')}
+              className="chip"
             >
+              <span
+                className={`size-1.5 rounded-full ${isOn ? 'bg-accent' : 'bg-border-strong'}`}
+                aria-hidden
+              />
               {LAYER_LABELS[layer]}
             </button>
           );

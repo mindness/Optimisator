@@ -48,3 +48,7 @@ Thumbs.db
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Impeccable (seul le sidecar de DESIGN.md est versionné)
+.impeccable/*
+!.impeccable/design.json

@@ -1,3 +1,4 @@
+import { annotate } from '@/components/common/Glossary';
 import { useMemo, useState } from 'react';
 
 import { formatEuro } from '@/components/common/MetricBadge';
@@ -102,7 +103,7 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         <label className="flex items-center gap-2 text-xs text-fg-muted">
           Objectif
           <select
-            className="min-h-11 border border-border bg-surface px-2 text-sm text-fg"
+            className="field w-auto"
             value={objective}
             onChange={(e) => setObjective(e.target.value as OptimizationObjective)}
           >
@@ -115,19 +116,19 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         </label>
       </header>
 
-      <p className="m-0 max-w-prose text-sm text-fg-muted">{OBJECTIVE_NOTE[objective]}</p>
+      <p className="m-0 max-w-prose text-sm text-fg-muted">{annotate(OBJECTIVE_NOTE[objective])}</p>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Optimum trouvé" value={formatEuro(result.best[objective])} tone="text-flow-cash" />
+        <Stat label="Optimum trouvé" value={formatEuro(result.best[objective])} tone="text-fg" />
         <Stat label="Scénario actuel" value={formatEuro(result.baseline[objective])} tone="text-fg" />
         <Stat
           label="Écart"
           value={`${gain >= 0 ? '+' : ''}${formatEuro(gain)}`}
-          tone={gain >= 0 ? 'text-flow-cash' : 'text-flow-alert'}
+          tone={gain >= 0 ? 'text-positive' : 'text-negative'}
         />
       </div>
 
-      <dl className="grid gap-x-6 gap-y-1 border border-border p-3 text-sm sm:grid-cols-2">
+      <dl className="grid gap-x-6 gap-y-1 card p-3 text-sm sm:grid-cols-2">
         <Row label="Salaire net annuel" value={formatEuro(result.best.executiveNetSalary)} />
         <Row label="Part du résultat distribuée" value={`${Math.round(result.best.payoutRatio * 100)} %`} />
         <Row label="Dividende brut" value={formatEuro(result.best.dividendGross)} />
@@ -136,7 +137,7 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         <Row label="TMI atteinte" value={`${Math.round(result.best.marginalRate * 100)} %`} />
       </dl>
 
-      <figure className="m-0 border border-border bg-surface p-3">
+      <figure className="m-0 card p-3">
         <figcaption className="mb-2 text-xs text-fg-muted">
           {OBJECTIVES.find(([id]) => id === objective)?.[1]} selon le salaire net, à{' '}
           {Math.round(result.best.payoutRatio * 100)} % de distribution. Échelle verticale
@@ -154,10 +155,10 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
             x1={PAD.left} x2={W - PAD.right} y1={H - PAD.bottom} y2={H - PAD.bottom}
             stroke="var(--border)" strokeWidth="1"
           />
-          <path d={path} fill="none" stroke="var(--flow-cash)" strokeWidth="2" strokeLinejoin="round" />
+          <path d={path} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" />
           <circle
             cx={x(result.best.executiveNetSalary)} cy={y(result.best[objective])} r="4.5"
-            fill="var(--flow-cash)" stroke="var(--surface)" strokeWidth="2"
+            fill="var(--accent)" stroke="var(--surface)" strokeWidth="2"
           />
           {active && (
             <>
@@ -168,7 +169,7 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
               />
               <circle
                 cx={x(active.executiveNetSalary)} cy={y(active[objective])} r="4"
-                fill="var(--surface)" stroke="var(--flow-cash)" strokeWidth="2"
+                fill="var(--surface)" stroke="var(--accent)" strokeWidth="2"
               />
             </>
           )}
@@ -177,18 +178,18 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
             {formatEuro(xMax)}
           </text>
         </svg>
-        <p className="m-0 min-h-5 font-amount text-xs text-fg-muted" aria-live="polite">
+        <p className="m-0 min-h-5 text-xs text-fg-muted" aria-live="polite">
           {active
             ? `Salaire ${formatEuro(active.executiveNetSalary)} → ${formatEuro(active[objective])}`
             : 'Survolez la courbe pour lire un point.'}
         </p>
       </figure>
 
-      <details className="border border-border p-3 text-sm">
+      <details className="disclosure card p-3 text-sm">
         <summary className="min-h-11 cursor-pointer text-fg">Voir les valeurs balayées</summary>
         <table className="mt-2 w-full border-collapse text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-fg-muted">
+            <tr className="text-left text-xs font-medium text-fg-muted">
               <th scope="col" className="py-1 pr-3 font-medium">Salaire net</th>
               <th scope="col" className="py-1 pr-3 font-medium">Dividende brut</th>
               <th scope="col" className="py-1 font-medium">Objectif</th>
@@ -206,7 +207,7 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         </table>
       </details>
 
-      <details className="border border-border p-3 text-sm">
+      <details className="disclosure card p-3 text-sm">
         <summary className="min-h-11 cursor-pointer text-fg">
           D’où viennent les cotisations ({(URSSAF_EMPLOYEE_RATE_2026.value * 100).toFixed(2)} %
           salariales + {(URSSAF_EMPLOYER_RATE_2026.value * 100).toFixed(2)} % patronales)
@@ -230,7 +231,7 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         </ul>
       </details>
 
-      <div className="border border-flow-alert p-3">
+      <div className="rounded-md bg-negative-soft p-3">
         <h3 className="m-0 text-sm font-semibold text-fg">Ce que ce balayage ne voit pas</h3>
         <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-fg-muted">
           {result.warnings.map((warning) => (
@@ -243,7 +244,7 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         <button
           type="button"
           onClick={() => onApply(result.best)}
-          className="inline-flex h-11 items-center border border-border bg-surface px-3 text-sm font-medium text-fg hover:border-border-strong"
+          className="btn"
         >
           Appliquer au simulateur
         </button>
@@ -254,8 +255,8 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <div className="border border-border p-3">
-      <div className="text-xs uppercase tracking-wide text-fg-muted">{label}</div>
+    <div className="card p-3">
+      <div className="text-xs font-medium text-fg-muted">{label}</div>
       <div className={`mt-1 font-amount text-xl ${tone}`}>{value}</div>
     </div>
   );
@@ -264,7 +265,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: stri
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border py-1 last:border-b-0">
-      <dt className="text-fg-muted">{label}</dt>
+      <dt className="text-fg-muted">{annotate(label)}</dt>
       <dd className="m-0 font-amount text-fg">{value}</dd>
     </div>
   );

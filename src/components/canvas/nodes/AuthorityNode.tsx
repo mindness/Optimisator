@@ -4,12 +4,12 @@ import { MetricBadge } from '@/components/common/MetricBadge';
 
 import { EntityNodeShell, type EntityFlowNode } from '../EntityNode';
 
-export function AuthorityNode({ data, selected }: NodeProps<EntityFlowNode>) {
+export function AuthorityNode({ data, selected, sourcePosition, targetPosition }: NodeProps<EntityFlowNode>) {
   const isUrssaf = data.entityType === 'urssaf';
   const subtitle = isUrssaf ? 'URSSAF' : 'Trésor public';
 
   return (
-    <EntityNodeShell data={data} selected={selected} subtitle={subtitle}>
+    <EntityNodeShell data={data} selected={selected} sourcePosition={sourcePosition} targetPosition={targetPosition} subtitle={subtitle}>
       {data.metrics?.corporateTax != null ? (
         <MetricBadge
           amount={data.metrics.corporateTax}

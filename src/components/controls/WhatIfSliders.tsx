@@ -1,11 +1,19 @@
-import { MetricBadge } from '@/components/common/MetricBadge';
-import type { WhatIfInputs } from '@/core/engine';
+import type { CSSProperties } from 'react';
+
+import { annotate } from '@/components/common/Glossary';
+import { EditableAmount } from '@/components/common/EditableAmount';
+import { formatPercent, MetricBadge } from '@/components/common/MetricBadge';
+import { PFU_TOTAL_RATE, type WhatIfInputs } from '@/core/engine';
+
+/** Libellé tiré du taux du moteur : l'interface ne peut pas afficher un autre PFU que celui calculé. */
+const PFU_LABEL = `PFU ${formatPercent(PFU_TOTAL_RATE.value, 1)}`;
 
 export type WhatIfSlidersProps = {
   values: WhatIfInputs;
   /** Resolved/preset seeds when a whatIf key is unset. */
   defaults?: Partial<WhatIfInputs>;
   hasHolding?: boolean;
+  hasSci?: boolean;
   /** TMI résolue du foyer, affichée en regard du profil fiscal. */
   marginalRate?: number;
   /** Régime effectivement retenu pour les dividendes (utile en mode auto). */
@@ -91,6 +99,7 @@ export function WhatIfSliders({
   values,
   defaults,
   hasHolding = false,
+  hasSci = false,
   marginalRate,
   appliedDividendMode,
   onChange,
@@ -104,34 +113,50 @@ export function WhatIfSliders({
       aria-label="Curseurs What-If"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-          What-If
-        </h2>
+        <h2 className="panel-title">Hypothèses</h2>
         {onReset ? (
-          <button
-            type="button"
-            onClick={onReset}
-            className="border border-border px-2 py-0.5 text-xs text-fg-muted hover:border-border-strong hover:text-fg"
-          >
+          <button type="button" onClick={onReset} className="btn btn-ghost btn-sm">
             Réinitialiser
           </button>
         ) : null}
       </div>
 
-      <p className="m-0 text-xs text-fg-muted">
-        Montants annuels. Les dividendes SASU et holding sont deux décisions distinctes ; zéro conserve les fonds dans la société.
+      <p className="panel-help">
+        Montants annuels. Glissez un curseur ou cliquez un montant pour le saisir : le schéma et la
+        synthèse se recalculent aussitôt.
       </p>
-      <ul className="m-0 flex list-none flex-col gap-3 p-0">
-        {SLIDERS.filter((def) => hasHolding || def.key !== 'holdingDividendAmount').map((def) => {
+      <ul className="m-0 flex list-none flex-col gap-3.5 p-0">
+        {SLIDERS.filter((def) => (hasHolding || def.key !== 'holdingDividendAmount') && (hasSci || def.key !== 'sciRentHt')).map((def) => {
           const value = readValue(values, def, defaults);
           const inputId = `what-if-${def.key}`;
+          // Un montant saisi peut dépasser la course du curseur : le remplissage plafonne à 100 %.
+          const fill = `${Math.min(1, (value - def.min) / (def.max - def.min)) * 100}%`;
+          const modified = typeof values[def.key] === 'number' && values[def.key] !== readValue({}, def, defaults);
           return (
-            <li key={def.key} className="flex flex-col gap-1">
+            <li key={def.key} className="flex flex-col gap-0.5">
               <div className="flex items-baseline justify-between gap-2">
                 <label htmlFor={inputId} className="text-xs font-medium text-fg">
-                  {def.label}
+                  {annotate(def.label)}
                 </label>
-                <MetricBadge amount={value} tone="cash" fractionDigits={0} />
+                <span className="flex items-baseline gap-1">
+                  {modified ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm px-1 py-0 text-xs"
+                      onClick={() => onChange({ [def.key]: undefined } as Partial<WhatIfInputs>)}
+                      aria-label={`Revenir à la valeur d’origine — ${def.label}`}
+                      title="Revenir à la valeur d’origine"
+                    >
+                      ↺
+                    </button>
+                  ) : null}
+                  <EditableAmount
+                    label={def.label}
+                    hideLabel
+                    value={value}
+                    onChange={(next) => onChange({ [def.key]: next } as Partial<WhatIfInputs>)}
+                  />
+                </span>
               </div>
               <input
                 id={inputId}
@@ -143,7 +168,7 @@ export function WhatIfSliders({
                 onChange={(e) =>
                   onChange({ [def.key]: Number(e.target.value) } as Partial<WhatIfInputs>)
                 }
-                className="w-full accent-[var(--flow-vat)]"
+                style={{ '--fill': fill } as CSSProperties}
                 aria-valuetext={`${value} euros`}
               />
             </li>
@@ -151,12 +176,11 @@ export function WhatIfSliders({
         })}
       </ul>
 
-      <fieldset className="m-0 flex flex-col gap-2 border border-border p-2">
-        <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-          Foyer fiscal
-        </legend>
+      <fieldset className="m-0 flex flex-col gap-2.5 rounded-md bg-surface-sunken p-3">
+        <legend className="sr-only">Foyer fiscal</legend>
+        <p className="m-0 text-xs font-semibold text-fg">Foyer fiscal</p>
 
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-col gap-1">
           <label htmlFor="what-if-situation" className="text-xs font-medium text-fg">
             Situation
           </label>
@@ -164,14 +188,14 @@ export function WhatIfSliders({
             id="what-if-situation"
             value={values.situation ?? 'single'}
             onChange={(e) => onChange({ situation: e.target.value as 'single' | 'couple' })}
-            className="border border-border bg-surface px-1 py-0.5 text-xs text-fg"
+            className="field field-sm"
           >
             <option value="single">Célibataire</option>
             <option value="couple">Couple (imposition commune)</option>
           </select>
         </div>
 
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <label htmlFor="what-if-parts" className="text-xs font-medium text-fg">
             Parts de quotient familial
           </label>
@@ -183,11 +207,11 @@ export function WhatIfSliders({
             step={0.5}
             value={values.parts ?? (values.situation === 'couple' ? 2 : 1)}
             onChange={(e) => onChange({ parts: Math.max(1, Number(e.target.value)) })}
-            className="w-16 border border-border bg-surface px-1 py-0.5 text-right text-xs text-fg"
+            className="field field-sm font-amount w-16 text-right"
           />
         </div>
 
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex flex-col gap-1">
           <label htmlFor="what-if-dividend-mode" className="text-xs font-medium text-fg">
             Imposition des dividendes
           </label>
@@ -197,24 +221,21 @@ export function WhatIfSliders({
             onChange={(e) =>
               onChange({ dividendTaxMode: e.target.value as 'auto' | 'pfu' | 'bareme' })
             }
-            className="border border-border bg-surface px-1 py-0.5 text-xs text-fg"
+            className="field field-sm"
           >
             <option value="auto">Automatique (le moins coûteux)</option>
-            <option value="pfu">PFU 30 %</option>
+            <option value="pfu">{PFU_LABEL}</option>
             <option value="bareme">Barème + abattement 40 %</option>
           </select>
         </div>
 
         {marginalRate !== undefined ? (
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-xs font-medium text-fg">TMI du foyer</span>
-            <MetricBadge amount={marginalRate} unit="percent" tone="social" />
-          </div>
+          <MetricBadge amount={marginalRate} label="Tranche marginale du foyer" unit="percent" tone="neutral" />
         ) : null}
 
         {appliedDividendMode && (values.dividendTaxMode ?? 'auto') === 'auto' ? (
-          <p className="m-0 text-xs text-fg-muted">
-            Régime retenu : {appliedDividendMode === 'pfu' ? 'PFU 30 %' : 'barème (option globale)'}.
+          <p className="panel-help">
+            Régime retenu : {appliedDividendMode === 'pfu' ? PFU_LABEL : 'barème (option globale)'}.
             L’option barème engage tous les revenus de capitaux mobiliers du foyer.
           </p>
         ) : null}

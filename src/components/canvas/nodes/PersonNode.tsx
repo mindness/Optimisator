@@ -4,9 +4,9 @@ import { MetricBadge } from '@/components/common/MetricBadge';
 
 import { EntityNodeShell, type EntityFlowNode } from '../EntityNode';
 
-export function PersonNode({ data, selected }: NodeProps<EntityFlowNode>) {
+export function PersonNode({ data, selected, sourcePosition, targetPosition }: NodeProps<EntityFlowNode>) {
   return (
-    <EntityNodeShell data={data} selected={selected} subtitle="Personne">
+    <EntityNodeShell data={data} selected={selected} sourcePosition={sourcePosition} targetPosition={targetPosition} subtitle="Personne">
       {data.metrics?.netPersonalCash != null ? (
         <MetricBadge
           amount={data.metrics.netPersonalCash}

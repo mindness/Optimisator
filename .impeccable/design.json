@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-20T00:00:00Z",
+  "title": "Design System: Simulateur de Flux d'Entreprise",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Action Blue", "canonical": "#2563eb", "dark": "#5b8def", "tonalRamp": ["#0b1d4d", "#12307e", "#1a44ad", "#1d4ed8", "#2563eb", "#5b8def", "#9dbcf7", "#e8f0fe"] },
+      "accent-soft": { "role": "primary", "displayName": "Blue Tint", "canonical": "#e8f0fe", "dark": "#1b2a4a", "tonalRamp": ["#1b2a4a", "#22396a", "#2f4f8f", "#4a6fb3", "#7a9ad4", "#a9bfe8", "#d1def6", "#e8f0fe"] },
+      "positive": { "role": "secondary", "displayName": "Écart Green", "canonical": "#15803d", "dark": "#4ade80", "tonalRamp": ["#052e16", "#0b4a26", "#106433", "#15803d", "#22a04f", "#4ade80", "#a7f3c3", "#ecfdf3"] },
+      "negative": { "role": "secondary", "displayName": "Écart Red", "canonical": "#b91c1c", "dark": "#f87171", "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#f87171", "#fca5a5", "#fef2f2"] },
+      "flow-cash": { "role": "tertiary", "displayName": "Trésorerie Green", "canonical": "#047857", "dark": "#34d399", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#34d399", "#a7f3d0", "#ecfdf5"] },
+      "flow-vat": { "role": "tertiary", "displayName": "TVA Teal", "canonical": "#0e7490", "dark": "#22d3ee", "tonalRamp": ["#083344", "#164e63", "#155e75", "#0e7490", "#0891b2", "#22d3ee", "#a5f3fc", "#ecfeff"] },
+      "flow-is": { "role": "tertiary", "displayName": "IS Amber", "canonical": "#b45309", "dark": "#fbbf24", "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#fbbf24", "#fde68a", "#fffbeb"] },
+      "flow-social": { "role": "tertiary", "displayName": "URSSAF Indigo", "canonical": "#4338ca", "dark": "#a5b4fc", "tonalRamp": ["#1e1b4b", "#312e81", "#3730a3", "#4338ca", "#4f46e5", "#818cf8", "#a5b4fc", "#eef2ff"] },
+      "flow-div": { "role": "tertiary", "displayName": "Dividende Gold", "canonical": "#a16207", "dark": "#facc15", "tonalRamp": ["#422006", "#713f12", "#854d0e", "#a16207", "#ca8a04", "#facc15", "#fef08a", "#fefce8"] },
+      "flow-alert": { "role": "tertiary", "displayName": "Alerte Rose", "canonical": "#be123c", "dark": "#fb7185", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#fb7185", "#fecdd3", "#fff1f2"] },
+      "canvas": { "role": "neutral", "displayName": "Canvas", "canonical": "#f4f6f9", "dark": "#0e1320", "tonalRamp": ["#0e1320", "#151b2b", "#253044", "#3b4860", "#5b6573", "#9aa5b8", "#e3e8ef", "#f4f6f9"] },
+      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "#ffffff", "dark": "#151b2b", "tonalRamp": ["#111725", "#151b2b", "#253044", "#3b4860", "#5b6573", "#c6cfdb", "#f8fafc", "#ffffff"] },
+      "border": { "role": "neutral", "displayName": "Hairline", "canonical": "#e3e8ef", "dark": "#253044", "tonalRamp": ["#111827", "#253044", "#3b4860", "#5b6573", "#9aa5b8", "#c6cfdb", "#e3e8ef", "#f4f6f9"] },
+      "fg": { "role": "neutral", "displayName": "Ink", "canonical": "#111827", "dark": "#f1f5f9", "tonalRamp": ["#111827", "#1f2937", "#374151", "#5b6573", "#6b7280", "#9aa5b8", "#d1d5db", "#f1f5f9"] },
+      "fg-muted": { "role": "neutral", "displayName": "Quiet", "canonical": "#5b6573", "dark": "#9aa5b8", "tonalRamp": ["#1f2937", "#374151", "#4b5563", "#5b6573", "#6b7280", "#9aa5b8", "#c6cfdb", "#e3e8ef"] },
+      "disclaimer-fg": { "role": "tertiary", "displayName": "Counsel Warning", "canonical": "#92400e", "dark": "#fcd34d", "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#fcd34d", "#fde68a", "#fffbeb"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page h2 in the header, view titles, dialog title." },
+      "title": { "displayName": "Title", "purpose": "panel-title for every panel section, node names, sidebar h1." },
+      "body": { "displayName": "Body", "purpose": "Base text; buttons and fields drop to 0.875rem." },
+      "label": { "displayName": "Label", "purpose": "KPI labels, panel-help sentences, chips, node subtitles, nav section headings." },
+      "amount": { "displayName": "Amount", "purpose": "Every euro and percentage via formatEuro / formatPercent in .font-amount." },
+      "amount-hero": { "displayName": "Amount hero", "purpose": "KPI value (1.125rem) and inspector 'Montant du flux' (1.5rem)." }
+    },
+    "shadows": [
+      { "name": "shadow-card", "value": "0 1px 2px rgb(16 24 40 / 0.05)", "dark": "0 1px 2px rgb(0 0 0 / 0.4)", "purpose": "Whisper under every resting card, button, field, KPI tile, node, edge label, slider thumb." },
+      { "name": "shadow-float", "value": "0 12px 32px -8px rgb(16 24 40 / 0.18), 0 2px 6px rgb(16 24 40 / 0.06)", "dark": "0 16px 40px -8px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4)", "purpose": "ShareModal dialog only." },
+      { "name": "selection-ring", "value": "border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent)", "purpose": "Selected entity node." }
+    ],
+    "motion": [
+      { "name": "feedback-duration", "value": "140ms", "purpose": "Colour / border / shadow transitions on every button, select, input and link; 0ms under reduced motion." },
+      { "name": "feedback-easing", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Easing for feedback transitions and arrivals." },
+      { "name": "inspector-arrive", "value": "220ms translateX(12px) → 0, opacity 0 → 1", "purpose": "FlowInspector replacing the right panel." },
+      { "name": "dialog-arrive", "value": "240ms translateY(10px) scale(0.98) → 1; backdrop 160ms opacity 0.65 → 1", "purpose": "ShareModal." },
+      { "name": "trace-confirm", "value": "320ms translateY(4px) → 0, opacity 0.5 → 1", "purpose": "MoneyTracer status line." },
+      { "name": "flow-edge-flux", "value": "stroke-dasharray 9 23, dashoffset -32 per cycle, linear infinite, cycle max(0.6s, 2.4 - 0.3·log10(amount))", "purpose": "Money gliding source → target on every edge; hidden under reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "40rem", "purpose": "KPI grid 2 → 3 columns." },
+      { "name": "lg", "value": "64rem", "purpose": "Sidebar 232px + fixed-height shell; right panel 320px." },
+      { "name": "xl", "value": "80rem", "purpose": "KPI grid 6 columns; step guide help inline." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default chrome button: white on hairline, whisper shadow.",
+      "html": "<button class=\"ds-btn\">Exporter</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--border, #e3e8ef); background: var(--surface, #fff); color: var(--fg, #111827); font: 500 0.875rem 'Plus Jakarta Sans', system-ui, sans-serif; box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05)); cursor: pointer; transition: border-color 140ms cubic-bezier(0.16,1,0.3,1), background-color 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn:hover { background: var(--surface-sunken, #f8fafc); border-color: var(--border-strong, #c6cfdb); } .ds-btn:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; } .ds-btn[aria-pressed=\"true\"] { background: var(--accent-soft, #e8f0fe); border-color: color-mix(in srgb, var(--accent, #2563eb) 45%, var(--border, #e3e8ef)); }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action colour: Partager, Appliquer.",
+      "html": "<button class=\"ds-btn-primary\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 15V3M8 7l4-4 4 4\"/></svg>Partager</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--accent, #2563eb); background: var(--accent, #2563eb); color: var(--accent-fg, #fff); font: 500 0.875rem 'Plus Jakarta Sans', system-ui, sans-serif; box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05)); cursor: pointer; transition: background-color 140ms cubic-bezier(0.16,1,0.3,1), border-color 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary:hover { background: var(--accent-strong, #1d4ed8); border-color: var(--accent-strong, #1d4ed8); } .ds-btn-primary:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet tertiary action: Réinitialiser, Retour aux hypothèses.",
+      "html": "<button class=\"ds-btn-ghost\">Réinitialiser</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: var(--radius, 0.5rem); border: 1px solid transparent; background: transparent; color: var(--fg-muted, #5b6573); font: 500 0.75rem 'Plus Jakarta Sans', system-ui, sans-serif; cursor: pointer; transition: color 140ms, background-color 140ms; } .ds-btn-ghost:hover { color: var(--fg, #111827); background: color-mix(in srgb, var(--fg, #111827) 6%, transparent); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Timeline step / layer toggle; pressed = blue tint.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">1 Facturation</button> <button class=\"ds-chip\">2 Charges</button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--border, #e3e8ef); background: var(--surface, #fff); color: var(--fg-muted, #5b6573); font: 500 0.75rem 'Plus Jakarta Sans', system-ui, sans-serif; cursor: pointer; transition: color 140ms, border-color 140ms, background-color 140ms; } .ds-chip:hover { color: var(--fg, #111827); border-color: var(--border-strong, #c6cfdb); } .ds-chip[aria-pressed=\"true\"] { background: var(--accent-soft, #e8f0fe); border-color: color-mix(in srgb, var(--accent, #2563eb) 45%, var(--border, #e3e8ef)); color: var(--fg, #111827); } .ds-chip:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Text input / select with painted chevron.",
+      "html": "<input class=\"ds-field\" value=\"Freelance SASU seule\" />",
+      "css": ".ds-field { height: 36px; width: 100%; padding: 0 10px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--border, #e3e8ef); background: var(--surface, #fff); color: var(--fg, #111827); font: 400 0.875rem 'Plus Jakarta Sans', system-ui, sans-serif; box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05)); caret-color: var(--accent, #2563eb); transition: border-color 140ms; } .ds-field:hover { border-color: var(--border-strong, #c6cfdb); } .ds-field:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Range slider",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Hypothèses slider: 4px track, blue fill, 20px white thumb with blue ring.",
+      "html": "<div class=\"ds-slider\"><div class=\"ds-slider-row\"><span>CA HT</span><span class=\"ds-amount\">120 000 €</span></div><input type=\"range\" min=\"0\" max=\"500000\" value=\"120000\" style=\"--fill:24%\" /></div>",
+      "css": ".ds-slider { display: flex; flex-direction: column; gap: 8px; width: 280px; font: 500 0.75rem 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fg, #111827); } .ds-slider-row { display: flex; justify-content: space-between; } .ds-amount { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; } .ds-slider input[type=range] { -webkit-appearance: none; appearance: none; height: 24px; width: 100%; background: transparent; cursor: pointer; } .ds-slider input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(var(--accent, #2563eb), var(--accent, #2563eb)) 0 / var(--fill, 0%) 100% no-repeat, var(--border, #e3e8ef); } .ds-slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; margin-top: -8px; height: 20px; width: 20px; border-radius: 999px; border: 2px solid var(--accent, #2563eb); background: var(--surface, #fff); box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05)); } .ds-slider input[type=range]:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Sidebar nav item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "232px sidebar item with 16px stroke icon; active = blue tint + blue text.",
+      "html": "<nav class=\"ds-nav\"><p class=\"ds-nav-head\">Piloter</p><button class=\"ds-nav-item\" aria-pressed=\"true\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12h4l3-8 4 16 3-8h2\"/></svg>Simulation</button><button class=\"ds-nav-item\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 6h6v6H4zM14 12h6v6h-6zM10 9h4v6\"/></svg>Architecture</button></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 4px; width: 208px; padding: 12px; background: var(--surface, #fff); border-right: 1px solid var(--border, #e3e8ef); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; } .ds-nav-head { margin: 0; padding: 8px 10px 4px; font-size: 0.6875rem; font-weight: 600; color: var(--fg-muted, #5b6573); } .ds-nav-item { display: flex; align-items: center; gap: 10px; height: 36px; width: 100%; padding: 0 10px; border-radius: var(--radius, 0.5rem); border: 1px solid transparent; background: transparent; color: var(--fg-muted, #5b6573); font: 500 0.875rem 'Plus Jakarta Sans', system-ui, sans-serif; text-align: left; cursor: pointer; transition: color 140ms, background-color 140ms; } .ds-nav-item:hover { color: var(--fg, #111827); background: color-mix(in srgb, var(--fg, #111827) 5%, transparent); } .ds-nav-item[aria-pressed=\"true\"] { color: var(--accent, #2563eb); background: var(--accent-soft, #e8f0fe); } .ds-nav-item:focus-visible { outline: 2px solid var(--focus-ring, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "KPI tile",
+      "kind": "card",
+      "refersTo": "kpi-tile",
+      "description": "Synthèse tile: label, écart before value.",
+      "html": "<div class=\"ds-kpi\"><span class=\"ds-kpi-label\">Cotisations URSSAF</span><span class=\"ds-kpi-delta ds-kpi-delta--neg\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 15 6-6 6 6\"/></svg> 17 633 €</span><span class=\"ds-kpi-value\">44 083 €</span></div>",
+      "css": ".ds-kpi { display: flex; flex-direction: column; gap: 4px; width: 190px; padding: 12px 14px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--border, #e3e8ef); background: var(--surface, #fff); box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05)); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; } .ds-kpi-label { font-size: 0.75rem; font-weight: 500; color: var(--fg-muted, #5b6573); } .ds-kpi-delta { display: inline-flex; align-items: center; gap: 4px; font: 500 0.75rem 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--fg-muted, #5b6573); } .ds-kpi-delta--pos { color: var(--positive, #15803d); } .ds-kpi-delta--neg { color: var(--negative, #b91c1c); } .ds-kpi-value { font: 600 1.125rem 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--fg, #111827); }"
+    },
+    {
+      "name": "Entity node",
+      "kind": "custom",
+      "refersTo": "entity-node",
+      "description": "Flow diagram node: role dot beside the name, hairline-separated metrics.",
+      "html": "<article class=\"ds-node\"><header class=\"ds-node-head\"><span class=\"ds-node-dot\"></span><div><h3>SASU OpCo</h3><p>SASU</p></div></header><div class=\"ds-node-body\"><span class=\"ds-node-row\"><span>CA HT</span><span class=\"ds-amount\">120 000 €</span></span><span class=\"ds-node-row\"><span>Résultat</span><span class=\"ds-amount\">-8 082,87 €</span></span></div></article>",
+      "css": ".ds-node { width: 200px; padding: 10px 12px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--border, #e3e8ef); background: var(--surface, #fff); box-shadow: var(--shadow-card, 0 1px 2px rgb(16 24 40 / 0.05)); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: var(--fg, #111827); } .ds-node-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; } .ds-node-dot { margin-top: 6px; width: 8px; height: 8px; border-radius: 999px; background: var(--flow-cash, #047857); flex-shrink: 0; } .ds-node h3 { margin: 0; font-size: 0.875rem; font-weight: 600; line-height: 1.25; } .ds-node p { margin: 2px 0 0; font-size: 0.75rem; color: var(--fg-muted, #5b6573); } .ds-node-body { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--border, #e3e8ef); } .ds-node-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.75rem; color: var(--fg-muted, #5b6573); } .ds-amount { font: 500 0.75rem 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--fg, #111827); } .ds-node:hover { border-color: var(--border-strong, #c6cfdb); }"
+    },
+    {
+      "name": "Disclaimer",
+      "kind": "custom",
+      "refersTo": "disclaimer",
+      "description": "Permanent legal note in Counsel Warning tokens.",
+      "html": "<aside class=\"ds-disclaimer\" role=\"note\"><p>Simulation pédagogique — ne constitue pas un conseil fiscal, juridique ou financier. Vérifiez auprès d’un professionnel avant toute décision.</p></aside>",
+      "css": ".ds-disclaimer { max-width: 560px; padding: 8px 12px; border-radius: var(--radius, 0.5rem); border: 1px solid var(--disclaimer-border, #fcd34d); background: var(--disclaimer-bg, #fffbeb); color: var(--disclaimer-fg, #92400e); font: 400 0.875rem 'Plus Jakarta Sans', system-ui, sans-serif; } .ds-disclaimer p { margin: 0; line-height: 1.375; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Cabinet en ligne",
+    "overview": "The simulator is the pro management tool a dirigeant opens every week next to the accountant's own software, in the grammar of Pennylane, Qonto or Indy: a cool gray-white canvas, white cards on a 1px hairline with a whisper shadow, 8px corners, one blue for every action. It is read in daylight. Depth is structural (border + surface vs canvas), never atmospheric; the only saturated colours on a screen are the fiscal roles on the flow diagram and the green/red of an écart against the point de départ.\n\nDensity is office-tool compact: 15px body, 36px controls, 12px gutters, a 232px sidebar and a 320px Hypothèses panel around a full-bleed schéma. Every panel opens with a title plus one help sentence, the four numbered steps sit above the KPI row, and each tuile shows the écart (▲▼ + montant) before the value. The dark theme stays an option (`.dark` on `<html>`), tuned as the same system under low light, not a different product.\n\nConfirmed rejections: the neon dark fintech dashboard, purple SaaS gradients, cream + terracotta, stacked multi-shadow cards, marketing chrome.",
+    "keyCharacteristics": [
+      "Light default; cool gray-white canvas, white 1px cards, 1–2px shadow",
+      "One action colour (blue); green/red reserved for deltas vs baseline",
+      "Fiscal role colours (cash / TVA / IS / social / dividendes / alerte) live only on the flow diagram, its node dots and the inspector amount",
+      "Plus Jakarta Sans for UI, JetBrains Mono tabular for every euro",
+      "8px radius everywhere, 6px on nothing yet, pills only for step numbers and slider thumbs",
+      "Motion follows an action (140ms feedback); no page-load choreography; flux dashes stop under reduced motion"
+    ],
+    "rules": [
+      { "name": "The One Action Colour Rule", "body": "Blue is the only chrome accent. If a control, tab, or link is not blue-tinted it is not interactive-primary; no second accent is ever introduced for chrome.", "section": "colors" },
+      { "name": "The Diagram-Only Roles Rule", "body": "A `flow-*` hue means one fiscal job and appears only on the schéma (edges, dash, label amount, node dot) and the inspector's amount. KPI tiles, buttons, chips and nav never wear a role colour.", "section": "colors" },
+      { "name": "The Écart Colour Rule", "body": "Green and red are spent on comparisons against the point de départ and on funding warnings. They do not mark entity types, categories, or success toasts.", "section": "colors" },
+      { "name": "The Tabular Money Rule", "body": "Every euro and percentage goes through `formatEuro` / `formatPercent` and sits in `.font-amount`. Sans digits never carry money.", "section": "typography" },
+      { "name": "The Title + Help Rule", "body": "Every panel section opens with a `panel-title` and one `panel-help` sentence. No eyebrow, no kicker, no uppercase label above a title.", "section": "typography" },
+      { "name": "The Hairline Depth Rule", "body": "Hierarchy is 1px `border` + `surface` on `canvas`. A shadow beyond `shadow-card` means the element floats above the workspace (dialog), and nothing else earns it.", "section": "elevation" },
+      { "name": "The No Nested Card Rule", "body": "Panels never nest cards. Inside a card, sub-blocks use `surface-sunken` fill or a `border-t` hairline, not another bordered card.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep light as the default and build every surface as `surface` + 1px `border` + `shadow-card` on `canvas`, 8px radius.",
+      "Do route every euro through `formatEuro` inside `.font-amount`, and show the écart (▲▼ + montant, green/red) before the value on any KPI.",
+      "Do use blue (`accent` / `accent-soft`) for the one primary action, pressed state and selection; use `btn` / `btn-ghost` for everything else.",
+      "Do open every panel section with `panel-title` + `panel-help`, and number sequential guidance with `step-no`.",
+      "Do keep role colours on the schéma: edge stroke, dash, label amount, node dot, inspector amount."
+    ],
+    "donts": [
+      "Don't apply a `flow-*` hue to buttons, chips, KPI tiles, nav or page chrome.",
+      "Don't spend green/red on anything other than a delta vs point de départ or a funding warning.",
+      "Don't stack shadows, nest cards, or use `shadow-float` outside a dialog.",
+      "Don't use uppercase tracked labels, eyebrows or kickers above titles; a muted sentence-case help line is the house device.",
+      "Don't use Inter, Roboto, Arial or a system display face; don't set money in the sans.",
+      "Don't add page-load choreography or animate anything that did not follow an action."
+    ]
+  }
+}
