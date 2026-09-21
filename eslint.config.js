@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   // `backend` (API D1) et les scripts de skills vendorisés ont leurs propres règles.
-  { ignores: ['dist', 'coverage', 'backend', 'node_modules', '.claude', '.cursor'] },
+  { ignores: ['dist', 'coverage', 'backend', 'public', 'test-results', 'node_modules', '.claude', '.cursor'] },
   js.configs.recommended,
   tseslint.configs.recommended,
   jsxA11y.flatConfigs.recommended,

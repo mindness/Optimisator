@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 're
 import { FlowCanvas } from '@/components/canvas/FlowCanvas';
 import { DisclaimerBanner } from '@/components/common/DisclaimerBanner';
 import { Glossary } from '@/components/common/Glossary';
+import { RATES_LAST_VERIFIED, formatRatesDate } from '@/core/legal/ratesFreshness';
 import { KpiTile } from '@/components/common/KpiTile';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { FlowInspector } from '@/components/inspector/FlowInspector';
@@ -483,8 +484,12 @@ export default function App() {
           </main>
         )}
 
-        <footer className="shrink-0 border-t border-border bg-surface px-4 py-2 lg:px-6">
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border bg-surface px-4 py-2 lg:px-6">
           <DisclaimerBanner className="border-0 bg-transparent p-0 text-xs" />
+          <p className="m-0 flex flex-wrap gap-x-3 text-xs text-fg-muted">
+            <span data-testid="rates-as-of">Barèmes vérifiés au {formatRatesDate(RATES_LAST_VERIFIED)}</span>
+            <a href="/legal" className="underline underline-offset-2 hover:text-fg">Mentions légales · CGU · Confidentialité</a>
+          </p>
         </footer>
       </div>
     </div>

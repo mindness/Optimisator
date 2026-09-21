@@ -84,6 +84,31 @@ rate limiting se règle dans Cloudflare** (Security → WAF → Rate limiting ru
 minute / IP sur `/api/scenarios`) — pas dans le code. Les scénarios stockés sont publics par
 construction : ne pas y mettre de données nominatives.
 
+### Mise en ligne : sécurité, légal, mesure
+
+- **En-têtes** : `public/_headers` (Cloudflare Pages / Netlify) pose la CSP, HSTS, `X-Frame-Options`…
+  Si l'API des liens courts ou Sentry vit sur un autre domaine que `*.workers.dev` / `*.sentry.io`,
+  ajoutez-le à `connect-src`.
+- **Previews par PR** : branchez le dépôt dans Cloudflare Pages (build `npm run build`, sortie `dist`) —
+  chaque PR obtient son URL de preview, sans workflow à maintenir.
+- **Pages légales** : `/legal` (mentions, CGU, confidentialité). **Renseignez `LEGAL_IDENTITY` dans
+  `src/components/common/LegalPage.tsx` avant toute mise en ligne** (obligation LCEN art. 6 III).
+- **Observabilité** (optionnelle, voir `.env.example`) : `VITE_SENTRY_DSN` charge Sentry à la demande,
+  `VITE_PLAUSIBLE_SRC` injecte Plausible (sans cookie, donc sans bandeau). Le hash d'URL, qui contient le
+  scénario, est retiré avant tout envoi.
+
+## Revue annuelle des barèmes
+
+Chaque taux porte `source`, `asOf` et `status`. Le pied de page affiche la dernière vérification, et
+`ratesFreshness.test.ts` **casse la CI dès qu'un barème n'a pas été revu depuis 400 jours**. À chaque loi de
+finances / LFSS (fin décembre) : relire chaque source Légifrance / BOFiP / URSSAF de `taxRules.ts` et
+`tnsRules.ts`, corriger la valeur si besoin, mettre `asOf` à la date de relecture, consigner dans `CHANGELOG.md`.
+
+## Tests
+
+`npm run check` (lint, types, unitaires) · `npm run test:e2e` (Playwright sur le build de prod ; première
+fois : `npx playwright install chromium`) · `cd backend && npm test`.
+
 ## Construire un schéma et lire les régimes
 
 La palette dépose une entité, un glisser-déposer entre deux entités crée le flux. Le tracé

@@ -52,3 +52,7 @@ Thumbs.db
 # Impeccable (seul le sidecar de DESIGN.md est versionné)
 .impeccable/*
 !.impeccable/design.json
+
+# Playwright
+test-results/
+playwright-report/
