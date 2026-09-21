@@ -189,3 +189,31 @@ describe('buildViewFlows', () => {
     ).toBe(true);
   });
 });
+
+describe('persistance locale', () => {
+  it('restaure scénario et hypothèses après rechargement, et ignore un stockage corrompu', async () => {
+    const store = useSimulationStore;
+    store.getState().setScenario(SASU_HOLDING_PRESET);
+    store.getState().setWhatIf({ caHt: 150_000, structureCosts: { sasu: 2_500 } });
+
+    // Rechargement : l'état mémoire repart des défauts, puis se réhydrate du stockage.
+    const saved = localStorage.getItem('optimisator.simulation')!;
+    resetSimulationStoreForTests();
+    localStorage.setItem('optimisator.simulation', saved);
+    await store.persist.rehydrate();
+    expect(store.getState().scenario.id).toBe(SASU_HOLDING_PRESET.id);
+    expect(store.getState().whatIf).toEqual({ caHt: 150_000, structureCosts: { sasu: 2_500 } });
+
+    resetSimulationStoreForTests();
+    localStorage.setItem('optimisator.simulation', JSON.stringify({ state: { scenario: { id: 42 } }, version: 1 }));
+    await store.persist.rehydrate();
+    expect(store.getState().scenario.id).toBe(FREELANCE_SASU_PRESET.id);
+  });
+
+  it('« Réinitialiser » garde les coûts de structure et le capital', () => {
+    const store = useSimulationStore;
+    store.getState().setWhatIf({ caHt: 150_000, structureCosts: { sasu: 2_500 }, capitalPrimesAndCca: 10_000 });
+    store.getState().resetWhatIf();
+    expect(store.getState().whatIf).toEqual({ structureCosts: { sasu: 2_500 }, capitalPrimesAndCca: 10_000 });
+  });
+});

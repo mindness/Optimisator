@@ -93,6 +93,10 @@ export interface WhatIfInputs {
    * `auto` retient le moins coûteux à la TMI constatée.
    */
   dividendTaxMode?: DividendTaxMode | 'auto';
+  /** Comparateur de structures : coût annuel saisi par structure (clé = `StructureId`). */
+  structureCosts?: Partial<Record<string, number>>;
+  /** Comparateur de structures : capital + primes + CCA (franchise de 10 % des dividendes TNS). */
+  capitalPrimesAndCca?: number;
 }
 
 export interface ResolvedFlow extends FlowEdgeData {

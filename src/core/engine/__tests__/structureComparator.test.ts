@@ -136,4 +136,16 @@ describe('compareStructures — arbitrages structurants', () => {
       expect(o.effectiveRate).toBe(0);
     }
   });
+
+  it('un coût de structure ne pénalise que la structure concernée', () => {
+    const inputs = { caHt: 120_000, expensesHt: 20_000 };
+    const net = (c: ReturnType<typeof compareStructures>, id: string) => c.outcomes.find((o) => o.id === id)!.netPersonal;
+    const base = compareStructures(inputs);
+    const costed = compareStructures({ ...inputs, structureCosts: { sasu: 3_000 } });
+    expect(net(costed, 'sasu')).toBeLessThan(net(base, 'sasu'));
+    // Charge déductible : la perte de net reste inférieure au coût saisi.
+    expect(net(base, 'sasu') - net(costed, 'sasu')).toBeLessThan(3_000);
+    expect(net(costed, 'eurl_is')).toBe(net(base, 'eurl_is'));
+    expect(net(costed, 'micro')).toBe(net(base, 'micro'));
+  });
 });

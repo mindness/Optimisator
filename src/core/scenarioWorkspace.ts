@@ -12,6 +12,25 @@ export function newId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+const OPCO_FIELDS = ['caHt', 'expensesHt', 'capital', 'openingTreasury', 'openingCca'] as const;
+
+/** Paramètres saisis par type d'entité — source unique pour l'accordéon et les cartes du canevas. */
+export const ENTITY_INPUT_FIELDS: Partial<Record<EntityType, readonly string[]>> = {
+  sasu: OPCO_FIELDS, eurl: OPCO_FIELDS, sarl: OPCO_FIELDS,
+  micro_entreprise: ['caHt', 'expensesHt', 'openingTreasury'],
+  entreprise_individuelle: ['caHt', 'expensesHt', 'openingTreasury'],
+  holding_sas: ['capital', 'openingTreasury', 'openingCca'],
+  holding_sarl: ['capital', 'openingTreasury', 'openingCca'],
+  sci_is: ['rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
+  sci_ir: ['rentalIncomeHt', 'interestExpenses', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
+};
+
+export const ENTITY_INPUT_FIELD_LABELS: Record<string, string> = {
+  caHt: 'CA HT annuel', expensesHt: 'Charges HT annuelles', rentalIncomeHt: 'Loyers HT annuels', interestExpenses: 'Intérêts d’emprunt annuels',
+  buildingAmortization: 'Amortissement annuel', otherCharges: 'Autres charges annuelles', capital: 'Capital libéré',
+  openingTreasury: 'Trésorerie d’ouverture', openingCca: 'Compte courant d’associé d’ouverture',
+};
+
 export const WORKSPACE_KEY = 'optimisator.workspace.v1';
 export const DRAFT_KEY = 'optimisator.draft.v1';
 const draftSchema = z.object({ sourceId: z.string(), draft: scenarioStateSchema });

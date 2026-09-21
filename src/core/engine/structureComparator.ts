@@ -54,6 +54,11 @@ export interface StructureComparisonInputs {
   capitalPrimesAndCca?: number;
   /** Revenus du foyer hors structure, déjà nets de leur abattement propre. */
   otherTaxableIncome?: number;
+  /**
+   * Coût annuel propre à chaque structure (expert-comptable, greffe, CFE…), saisi
+   * par l'utilisateur : ajouté aux charges de la seule structure concernée.
+   */
+  structureCosts?: Partial<Record<StructureId, number>>;
 }
 
 export interface StructureOutcome {
@@ -95,7 +100,7 @@ export interface StructureComparison {
 export const STRUCTURE_BLIND_SPOTS: readonly string[] = [
   'Cotisations TNS modélisées par un taux plat : les branches SSI réelles ont des assiettes, plafonds et dégressivités distincts.',
   'Cotisations d’assimilé-salarié forfaitaires (pas de bulletin de paie, ni plafonds de sécurité sociale, ni allègements généraux).',
-  'Aucun coût de structure différencié : expert-comptable, greffe, CFE, assurances et frais de constitution ne sont pas modélisés.',
+  'Coûts de structure (expert-comptable, greffe, CFE, assurances) : aucun barème légal, seuls les montants que vous saisissez par structure sont pris en compte ; frais de constitution hors modèle.',
   'Droits ouverts non valorisés : retraite, prévoyance et chômage diffèrent fortement entre assimilé-salarié et TNS.',
   'ACRE, versement libératoire de l’IR, exonérations de début d’activité et crédits d’impôt hors modèle.',
   'Holding évaluée en redistribution intégrale : sa valeur réelle tient au report d’imposition et au réinvestissement, non simulés ici.',
@@ -356,12 +361,17 @@ export function compareStructures(inputs: StructureComparisonInputs): StructureC
     dividendTaxMode: inputs.dividendTaxMode ?? ('auto' as const),
   };
 
+  const withCost = (id: StructureId) => ({
+    ...resolved,
+    expensesHt: resolved.expensesHt + Math.max(0, inputs.structureCosts?.[id] ?? 0),
+  });
+
   const outcomes: StructureOutcome[] = [
-    evaluateMicro(inputs.microCategory ?? 'bnc', resolved),
-    evaluateEiIr(resolved),
-    optimiseIsStructure('eurl_is', resolved),
-    optimiseIsStructure('sasu', resolved),
-    optimiseIsStructure('sasu_holding', resolved),
+    evaluateMicro(inputs.microCategory ?? 'bnc', withCost('micro')),
+    evaluateEiIr(withCost('ei_ir')),
+    optimiseIsStructure('eurl_is', withCost('eurl_is')),
+    optimiseIsStructure('sasu', withCost('sasu')),
+    optimiseIsStructure('sasu_holding', withCost('sasu_holding')),
   ].sort((a, b) => {
     if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
     return b.netPersonal - a.netPersonal;

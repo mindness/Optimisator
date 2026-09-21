@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 import {
   resolveScenarioGraph,
@@ -10,6 +11,7 @@ import {
 import { FREELANCE_SASU_PRESET } from '@/core/presets';
 import type { FlowCategory, FlowLayer, ScenarioState } from '@/core/types';
 import { FLOW_LAYERS } from '@/core/types';
+import { parseSharePayload } from '@/hooks/useUrlState';
 
 /** Flow enriched for canvas filtering / Money Tracer highlight. */
 export type ViewFlow = ResolvedFlow & {
@@ -136,6 +138,28 @@ export function buildViewFlows(
   });
 }
 
+const SIMULATION_STORAGE_KEY = 'optimisator.simulation';
+
+/**
+ * True when a local draft worth protecting sits in storage: a non-default
+ * scenario or any What-If hypothesis. Used to gate overwriting it with an
+ * incoming share link.
+ */
+export function hasLocalDraft(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  const saved = parseSharePayload(
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem(SIMULATION_STORAGE_KEY) ?? 'null')?.state ?? null;
+      } catch {
+        return null;
+      }
+    })(),
+  );
+  if (!saved) return false;
+  return saved.scenario.id !== FREELANCE_SASU_PRESET.id || Object.keys(saved.whatIf ?? {}).length > 0;
+}
+
 export function getResolvedScenario(
   scenario: ScenarioState,
   whatIf: WhatIfInputs,
@@ -148,7 +172,7 @@ export function getResolvedScenario(
   return resolveScenarioGraph(scenario, inputs);
 }
 
-export const useSimulationStore = create<SimulationState>()((set, get) => ({
+export const useSimulationStore = create<SimulationState>()(persist((set, get) => ({
   scenario: FREELANCE_SASU_PRESET,
   whatIf: { ...EMPTY_WHAT_IF },
   activeLayers: [...DEFAULT_LAYERS],
@@ -170,7 +194,14 @@ export const useSimulationStore = create<SimulationState>()((set, get) => ({
       whatIf: { ...state.whatIf, ...patch },
     })),
 
-  resetWhatIf: () => set({ whatIf: { ...EMPTY_WHAT_IF } }),
+  // Coûts de structure et capital décrivent le dossier, pas un arbitrage : ils survivent à la remise à zéro.
+  resetWhatIf: () =>
+    set(({ whatIf: { structureCosts, capitalPrimesAndCca } }) => ({
+      whatIf: {
+        ...(structureCosts ? { structureCosts } : {}),
+        ...(capitalPrimesAndCca !== undefined ? { capitalPrimesAndCca } : {}),
+      },
+    })),
 
   hydrateFromShare: (payload) => {
     const layers =
@@ -219,6 +250,17 @@ export const useSimulationStore = create<SimulationState>()((set, get) => ({
 
   clearMoneyTrace: () =>
     set({ moneyTrace: { active: false, amount: 0, pathFlowIds: [] } }),
+}), {
+  name: SIMULATION_STORAGE_KEY,
+  version: 1,
+  partialize: ({ scenario, whatIf, activeLayers }) => ({ scenario, whatIf, activeLayers }),
+  // Le stockage local peut être ancien ou corrompu : même validation que pour un lien de partage.
+  merge: (persisted, current) => {
+    const saved = parseSharePayload(persisted);
+    return saved
+      ? { ...current, scenario: saved.scenario, whatIf: saved.whatIf ?? current.whatIf, activeLayers: saved.activeLayers?.length ? saved.activeLayers : current.activeLayers }
+      : current;
+  },
 }));
 
 /**
