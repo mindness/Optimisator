@@ -27,9 +27,9 @@ describe('ScenarioWorkspace', () => {
   it('adds an entity from the palette and empties the schema on reset', () => {
     render(<ScenarioWorkspace initialScenario={FREELANCE_SASU_PRESET} whatIf={{}} onApply={() => {}} />);
 
-    const before = within(entityList()).getAllByRole('group').length;
+    const before = within(entityList()).getAllByTestId('entity-card').length;
     fireEvent.click(screen.getByRole('button', { name: 'Holding (SAS)' }));
-    expect(within(entityList()).getAllByRole('group')).toHaveLength(before + 1);
+    expect(within(entityList()).getAllByTestId('entity-card')).toHaveLength(before + 1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Repartir de zéro' }));
     expect(screen.getByText('Aucune entité : commencez par la palette.')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('ScenarioWorkspace', () => {
 
   it('undoes and redoes with Ctrl+Z / Ctrl+Y', () => {
     render(<ScenarioWorkspace initialScenario={FREELANCE_SASU_PRESET} whatIf={{}} onApply={() => {}} />);
-    const count = () => within(entityList()).getAllByRole('group').length;
+    const count = () => within(entityList()).getAllByTestId('entity-card').length;
 
     const before = count();
     fireEvent.click(screen.getByRole('button', { name: 'Holding (SAS)' }));

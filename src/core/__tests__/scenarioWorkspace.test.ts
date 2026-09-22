@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FREELANCE_SASU_PRESET, SASU_HOLDING_PRESET } from '../presets';
-import { adviseFlow, completeScenario, loadDraft, saveDraft, ENGINE_COVERED_TYPES, exportScenarioFile, loadWorkspace, parseScenarioFile, removeEntity, saveWorkspace, scenarioFileName, simulationIssues, snapshotScenario } from '../scenarioWorkspace';
+import { resolveScenarioGraph } from '../engine';
+import { adviseFlow, autoCompanionFlows, completeScenario, loadDraft, saveDraft, ENGINE_COVERED_TYPES, exportScenarioFile, loadWorkspace, parseScenarioFile, removeEntity, saveWorkspace, scenarioFileName, simulationIssues, snapshotScenario } from '../scenarioWorkspace';
 
 function memory() {
   const data = new Map<string, string>();
@@ -89,6 +90,37 @@ describe('scenario workspace', () => {
     expect(simulationIssues({ ...empty, entities: [empty.entities[0]!] })).toContain('Ajoutez au moins une société.');
     expect(completeScenario(FREELANCE_SASU_PRESET)).toEqual(FREELANCE_SASU_PRESET);
   });
+  it('derives the vat / urssaf / is flows a scenario built from scratch implies, and prices them', () => {
+    const scratch = {
+      ...snapshotScenario(FREELANCE_SASU_PRESET), ownerships: [],
+      entities: [
+        { id: 'co', label: 'Ma SASU', entityType: 'sasu' as const, inputs: { caHt: 120_000, expensesHt: 24_000 } },
+        { id: 'moi', label: 'Moi', entityType: 'person' as const },
+        { id: 'cli', label: 'Clients', entityType: 'client' as const },
+      ],
+      flows: [
+        { id: 'ca', category: 'revenue' as const, label: 'CA', amount: 120_000, periodicity: 'annual' as const, layer: 'treasury' as const, sourceId: 'cli', targetId: 'co' },
+        { id: 'sal', category: 'salary' as const, label: 'Rémunération', amount: 36_000, periodicity: 'annual' as const, layer: 'social' as const, sourceId: 'co', targetId: 'moi' },
+      ],
+    };
+    const derived = autoCompanionFlows(scratch);
+    const of = (category: string) => derived.flows.find((flow) => flow.category === category && flow.sourceId === 'co');
+    expect(of('vat')).toBeDefined();
+    expect(of('social_charges')).toBeDefined();
+    expect(of('is_tax')).toBeDefined();
+    // Déduits à zéro : c'est le moteur, sur les taux vérifiés, qui les chiffre.
+    expect(simulationIssues(derived)).toEqual([]);
+    const resolved = resolveScenarioGraph(derived);
+    for (const category of ['vat', 'social_charges', 'is_tax']) {
+      expect(resolved.flows.find((flow) => flow.category === category)!.resolvedAmount).toBeGreaterThan(0);
+    }
+    // Idempotent : une deuxième passe n'ajoute rien.
+    expect(autoCompanionFlows(derived)).toBe(derived);
+    // Franchise en base : pas de TVA facturée, donc pas de flux TVA.
+    const franchise = autoCompanionFlows({ ...scratch, entities: scratch.entities.map((e) => e.id === 'co' ? { ...e, options: { franchiseTva: true } } : e) });
+    expect(franchise.flows.some((flow) => flow.category === 'vat')).toBe(false);
+  });
+
   it('advises the management fees convention on a SASU → holding link', () => {
     const advice = adviseFlow(snapshotScenario(SASU_HOLDING_PRESET), { sourceId: 'sasu-1', targetId: 'holding-1', category: 'management_fees', amount: 12_000 });
     expect(advice).toMatchObject({ legalNoteId: 'management-fees', tax: 1_800 });

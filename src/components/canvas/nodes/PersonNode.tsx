@@ -17,6 +17,9 @@ export function PersonNode({ data, selected, sourcePosition, targetPosition }: N
       {data.metrics?.treasury != null ? (
         <MetricBadge amount={data.metrics.treasury} label="Cash" tone="cash" />
       ) : null}
+      {data.metrics?.marginalRate != null ? (
+        <MetricBadge amount={data.metrics.marginalRate} label="TMI" unit="percent" tone="neutral" />
+      ) : null}
     </EntityNodeShell>
   );
 }

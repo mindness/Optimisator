@@ -1,7 +1,7 @@
 import type { ScenarioState } from '@/core/types';
 
-import { roundMoney } from './calculator';
-import { resolveScenarioGraph, type WhatIfInputs } from './graphResolver';
+import { FULL_EXERCISE_DAYS, roundMoney } from './calculator';
+import { emptyCarryOver, resolveScenarioGraph, type CarryOver, type WhatIfInputs } from './graphResolver';
 
 export interface ForecastYear {
   /** Calendar year. */
@@ -14,11 +14,17 @@ export interface ForecastYear {
   /** Group cash accumulated since the first projected year. */
   cumulativeGroupCash: number;
   cumulativePersonalCash: number;
+  /** Stock de déficit reportable du groupe à la clôture de l'exercice. */
+  deficitCarryForward: number;
+  /** Capital restant dû des emprunts du groupe à la clôture. */
+  debtOutstanding: number;
 }
 
 export interface ForecastResult {
   years: ForecastYear[];
   warnings: string[];
+  /** État de clôture du dernier exercice projeté. */
+  carryOut: CarryOver;
 }
 
 export interface ForecastOptions {
@@ -38,8 +44,8 @@ export interface ForecastOptions {
 export const FORECAST_BLIND_SPOTS = [
   'Taux figés au barème 2026 : IS, URSSAF, PFU et tranches d’IR ne sont ni indexés ni réformés sur la période.',
   'Croissance appliquée uniformément au CA et aux charges : ni saisonnalité, ni paliers, ni embauche, ni investissement.',
-  'Chaque exercice est calculé isolément : aucun report de déficit, aucun report à nouveau, aucune trésorerie réinvestie.',
-  'Le cumul additionne des euros de différentes années sans actualisation ni inflation.',
+  'La trésorerie, les comptes courants, les déficits et les emprunts se reportent d’un exercice à l’autre ; ni distribution de réserves, ni réinvestissement, ni décision d’assemblée ne sont modélisés.',
+  'Le cumul additionne des euros de différentes années sans actualisation ni inflation ; la trésorerie de groupe étant reportée, son cumul compte plusieurs fois le même stock.',
 ] as const;
 
 /**
@@ -61,11 +67,17 @@ export function forecastScenario(
   const years: ForecastYear[] = [];
   let cumulativeGroupCash = 0;
   let cumulativePersonalCash = 0;
+  // P0 : l'exercice N+1 ouvre sur l'état de clôture de N — trésorerie, CCA, déficits, emprunts.
+  let carry: CarryOver | undefined;
 
   for (let i = 0; i < count; i += 1) {
     const caHt = roundMoney(base.caHt * (1 + caGrowth) ** i);
     const expensesHt = roundMoney(base.expensesHt * (1 + expenseGrowth) ** i);
-    const { summary } = resolveScenarioGraph(scenario, { ...inputs, caHt, expensesHt });
+    // Seul le premier exercice peut être écourté ; les suivants sont pleins.
+    const exerciseDays = i === 0 ? inputs.exerciseDays ?? scenario.options?.exerciseDays : FULL_EXERCISE_DAYS;
+    const resolved = resolveScenarioGraph(scenario, { ...inputs, caHt, expensesHt, year: startYear + i, exerciseDays }, carry);
+    const { summary } = resolved;
+    carry = resolved.carryOut;
 
     cumulativeGroupCash = roundMoney(cumulativeGroupCash + summary.netGroupCash);
     cumulativePersonalCash = roundMoney(cumulativePersonalCash + summary.netPersonalCash);
@@ -79,6 +91,8 @@ export function forecastScenario(
       netPersonalCash: roundMoney(summary.netPersonalCash),
       cumulativeGroupCash,
       cumulativePersonalCash,
+      deficitCarryForward: roundMoney(Object.values(carry.deficits).reduce((sum, stock) => sum + stock.carryForward, 0)),
+      debtOutstanding: roundMoney(Object.values(carry.loans).reduce((sum, loan) => sum + loan.principalOutstanding, 0)),
     });
   }
 
@@ -89,5 +103,5 @@ export function forecastScenario(
     );
   }
 
-  return { years, warnings };
+  return { years, warnings, carryOut: carry ?? emptyCarryOver(startYear) };
 }

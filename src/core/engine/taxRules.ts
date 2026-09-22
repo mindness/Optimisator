@@ -518,3 +518,659 @@ export const SALARY_NON_DEDUCTIBLE_CSG_CRDS: SourcedRate = {
   asOf: '2026-09-20',
   status: 'verified',
 };
+
+/* ------------------------------------------------------------------------ *
+ * Exhaustivité des montages (plan 2026-09-21, phases P1 → P8).
+ * Chaque valeur relevée sur Légifrance le 2026-09-22, version en vigueur.
+ * ------------------------------------------------------------------------ */
+
+/** Report en avant : 1 M€ + 50 % de la fraction du bénéfice au-delà. */
+export const DEFICIT_CARRYFORWARD_CAP_EUR: SourcedRate = {
+  value: 1_000_000,
+  unit: 'eur',
+  source: 'CGI art. 209, I al. 3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048847486',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const DEFICIT_CARRYFORWARD_MARGINAL_SHARE: SourcedRate = {
+  value: 0.5,
+  unit: 'ratio',
+  source: 'CGI art. 209, I al. 3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048847486',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Déficit foncier imputable sur le revenu global (hors intérêts d'emprunt). */
+export const DEFICIT_FONCIER_GLOBAL_CAP_EUR: SourcedRate = {
+  value: 10_700,
+  unit: 'eur',
+  source: 'CGI art. 156, I-3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373682',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Report des déficits non imputés sur le revenu global : 6 ans (art. 156, I al. 1). */
+export const DEFICIT_GLOBAL_CARRY_YEARS: SourcedRate = {
+  value: 6,
+  unit: 'years',
+  source: 'CGI art. 156, I al. 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373682',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- P3 : cession de titres ---------------------------------------------- */
+
+/** Quote-part de frais et charges sur les plus-values de titres de participation. */
+export const PARTICIPATION_QPFC_RATE: SourcedRate = {
+  value: 0.12,
+  unit: 'ratio',
+  source: 'CGI art. 219, I-a quinquies — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const PARTICIPATION_MIN_HOLDING_PCT: SourcedRate = {
+  value: 0.05,
+  unit: 'ratio',
+  source: 'CGI art. 219, I-a quinquies al. 3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const PARTICIPATION_MIN_HOLDING_YEARS: SourcedRate = {
+  value: 2,
+  unit: 'years',
+  source: 'CGI art. 219, I-a septies — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542939',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Abattement fixe du dirigeant partant à la retraite. */
+export const RETIREMENT_FIXED_ALLOWANCE_EUR: SourcedRate = {
+  value: 500_000,
+  unit: 'eur',
+  source: 'CGI art. 150-0 D ter, I-1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542877',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Abattement de droit commun, détention ≥ 2 ans et < 8 ans. */
+export const SHARE_SALE_ALLOWANCE_2_TO_8: SourcedRate = {
+  value: 0.5,
+  unit: 'ratio',
+  source: 'CGI art. 150-0 D, 1 ter-A-a — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053543011',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Abattement de droit commun, détention ≥ 8 ans. */
+export const SHARE_SALE_ALLOWANCE_OVER_8: SourcedRate = {
+  value: 0.65,
+  unit: 'ratio',
+  source: 'CGI art. 150-0 D, 1 ter-A-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053543011',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/**
+ * Le piège : les abattements pour durée de détention ne visent que les titres
+ * acquis **avant** cette année, et seulement sur option barème (art. 150-0 D, 1 ter-B).
+ */
+export const SHARE_SALE_ALLOWANCE_ACQUISITION_CUTOFF_YEAR: SourcedRate = {
+  value: 2018,
+  unit: 'year',
+  source: 'CGI art. 150-0 D, 1 ter-B-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053543011',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- P4 : apport-cession 150-0 B ter -------------------------------------- */
+
+/** Cession des titres apportés dans ce délai → obligation de remploi. */
+export const REPORT_SALE_WINDOW_YEARS: SourcedRate = {
+  value: 3,
+  unit: 'years',
+  source: 'CGI art. 150-0 B ter, I-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+export const REPORT_REINVESTMENT_QUOTA: SourcedRate = {
+  value: 0.7,
+  unit: 'ratio',
+  source: 'CGI art. 150-0 B ter, I-2° (loi n° 2026-103 du 19 février 2026, art. 11) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+export const REPORT_REINVESTMENT_WINDOW_YEARS: SourcedRate = {
+  value: 3,
+  unit: 'years',
+  source: 'CGI art. 150-0 B ter, I-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+export const REPORT_REINVESTMENT_HOLDING_YEARS: SourcedRate = {
+  value: 5,
+  unit: 'years',
+  source: 'CGI art. 150-0 B ter, I-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+/** Présomption de contrôle de la société bénéficiaire de l'apport. */
+export const REPORT_CONTROL_PRESUMPTION_PCT: SourcedRate = {
+  value: 0.3333,
+  unit: 'ratio',
+  source: 'CGI art. 150-0 B ter, III — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+/** Donation des titres reçus : purge du report après ce délai de conservation. */
+export const REPORT_DONATION_PURGE_YEARS: SourcedRate = {
+  value: 6,
+  unit: 'years',
+  source: 'CGI art. 150-0 B ter, II — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+/** Porté à 11 ans lorsque le remploi a transité par un fonds (d du 2°). */
+export const REPORT_DONATION_PURGE_YEARS_FUND: SourcedRate = {
+  value: 11,
+  unit: 'years',
+  source: 'CGI art. 150-0 B ter, II et I-2°-d — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542872',
+  asOf: '2026-09-21',
+  status: 'verified',
+};
+
+/** Intérêt de retard dû en cas de déchéance du report. */
+export const LATE_INTEREST_MONTHLY_RATE: SourcedRate = {
+  value: 0.002,
+  unit: 'ratio',
+  source: 'CGI art. 1727, III (abrogation différée au 01/01/2027) — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051213330',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- P5 : démembrement ---------------------------------------------------- */
+
+/** Usufruit à durée fixe : 23 % par période de dix ans entamée, sans égard à l'âge. */
+export const USUFRUIT_TEMPORAIRE_SHARE_PER_DECADE: SourcedRate = {
+  value: 0.23,
+  unit: 'ratio',
+  source: 'CGI art. 669, II — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006310173',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Barème viager : `upTo` = âge révolu de l'usufruitier, `rate` = quotité d'usufruit. */
+export const USUFRUIT_VIAGER_BAREME: SourcedRate<TaxBracket[]> = {
+  value: [
+    { upTo: 21, rate: 0.9 },
+    { upTo: 31, rate: 0.8 },
+    { upTo: 41, rate: 0.7 },
+    { upTo: 51, rate: 0.6 },
+    { upTo: 61, rate: 0.5 },
+    { upTo: 71, rate: 0.4 },
+    { upTo: 81, rate: 0.3 },
+    { upTo: 91, rate: 0.2 },
+    { upTo: Number.POSITIVE_INFINITY, rate: 0.1 },
+  ],
+  unit: 'ratio',
+  source: 'CGI art. 669, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006310173',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- P7 : transmission ---------------------------------------------------- */
+
+export const DUTREIL_EXEMPTION_RATE: SourcedRate = {
+  value: 0.75,
+  unit: 'ratio',
+  source: 'CGI art. 787 B al. 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542700',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const DUTREIL_COLLECTIVE_YEARS: SourcedRate = {
+  value: 2,
+  unit: 'years',
+  source: 'CGI art. 787 B, a — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542700',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/**
+ * Engagement individuel : **six** ans depuis la version en vigueur au 21/02/2026
+ * (et non quatre comme dans les versions antérieures).
+ */
+export const DUTREIL_INDIVIDUAL_YEARS: SourcedRate = {
+  value: 6,
+  unit: 'years',
+  source: 'CGI art. 787 B, c — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542700',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const DMTG_DIRECT_LINE_ABATEMENT_EUR: SourcedRate = {
+  value: 100_000,
+  unit: 'eur',
+  source: 'CGI art. 779, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000026292566',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const DMTG_ABATEMENT_RENEWAL_YEARS: SourcedRate = {
+  value: 15,
+  unit: 'years',
+  source: 'CGI art. 784 al. 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033809289',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Tarif des droits de mutation à titre gratuit en ligne directe (tableau I). */
+export const DMTG_DIRECT_LINE_BRACKETS: SourcedRate<TaxBracket[]> = {
+  value: [
+    { upTo: 8_072, rate: 0.05 },
+    { upTo: 12_109, rate: 0.1 },
+    { upTo: 15_932, rate: 0.15 },
+    { upTo: 552_324, rate: 0.2 },
+    { upTo: 902_838, rate: 0.3 },
+    { upTo: 1_805_677, rate: 0.4 },
+    { upTo: Number.POSITIVE_INFINITY, rate: 0.45 },
+  ],
+  unit: 'ratio',
+  source: 'CGI art. 777, tableau I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000030061736',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- P6 : IFI ------------------------------------------------------------- */
+
+export const IFI_THRESHOLD_EUR: SourcedRate = {
+  value: 1_300_000,
+  unit: 'eur',
+  source: 'CGI art. 964 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036384999',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const IFI_BRACKETS: SourcedRate<TaxBracket[]> = {
+  value: [
+    { upTo: 800_000, rate: 0 },
+    { upTo: 1_300_000, rate: 0.005 },
+    { upTo: 2_570_000, rate: 0.007 },
+    { upTo: 5_000_000, rate: 0.01 },
+    { upTo: 10_000_000, rate: 0.0125 },
+    { upTo: Number.POSITIVE_INFINITY, rate: 0.015 },
+  ],
+  unit: 'ratio',
+  source: 'CGI art. 977, 1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036385041',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Décote : 17 500 € − 1,25 % P, entre 1 300 000 € et 1 400 000 €. */
+export const IFI_DECOTE_BASE_EUR: SourcedRate = {
+  value: 17_500,
+  unit: 'eur',
+  source: 'CGI art. 977, 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036385041',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const IFI_DECOTE_SLOPE: SourcedRate = {
+  value: 0.0125,
+  unit: 'ratio',
+  source: 'CGI art. 977, 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000036385041',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- P8 : location meublée ------------------------------------------------ */
+
+/** Seuil de recettes du meublé professionnel, cumulatif avec la prépondérance. */
+export const LMP_RECEIPTS_THRESHOLD_EUR: SourcedRate = {
+  value: 23_000,
+  unit: 'eur',
+  source: 'CGI art. 155, IV-2-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053544949',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Déficit du meublé non professionnel : imputable 10 ans sur la même catégorie. */
+export const LMNP_DEFICIT_CARRY_YEARS: SourcedRate = {
+  value: 10,
+  unit: 'years',
+  source: 'CGI art. 156, I-1° ter — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054373682',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Preuves attendues d'une holding animatrice — liste affichée, jamais présumée. */
+export const ANIMATRICE_EVIDENCE: readonly string[] = [
+  'Convention d’animation écrite, datée et signée avec chaque filiale.',
+  'Participation effective à la conduite de la politique du groupe (procès-verbaux, comités).',
+  'Prestations administratives, juridiques, comptables ou financières réellement rendues et facturées.',
+  'Moyens humains et matériels propres à la holding (personnel, locaux).',
+  'Contrôle des filiales : détention et droits de vote documentés.',
+] as const;
+
+/* ------------------------------------------------------------------------ *
+ * Lot 2026 : contribution différentielle, taxe sur les holdings, amendement
+ * Charasse, PER, mécénat, plus-value immobilière des particuliers.
+ * Valeurs relevées sur Légifrance le 2026-09-22, version en vigueur.
+ * ------------------------------------------------------------------------ */
+
+/* ---- Contribution différentielle sur les hauts revenus (CGI art. 224) ----- */
+
+export const CDHR_RATE: SourcedRate = {
+  value: 0.2,
+  unit: 'ratio',
+  source: 'CGI art. 224, III-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const CDHR_THRESHOLD_SINGLE_EUR: SourcedRate = {
+  value: 250_000,
+  unit: 'eur',
+  source: 'CGI art. 224, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const CDHR_THRESHOLD_COUPLE_EUR: SourcedRate = {
+  value: 500_000,
+  unit: 'eur',
+  source: 'CGI art. 224, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Lissage : la contribution est atténuée jusqu'à ce plafond de revenu. */
+export const CDHR_SMOOTHING_CEILING_SINGLE_EUR: SourcedRate = {
+  value: 330_000,
+  unit: 'eur',
+  source: 'CGI art. 224, V — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const CDHR_SMOOTHING_CEILING_COUPLE_EUR: SourcedRate = {
+  value: 660_000,
+  unit: 'eur',
+  source: 'CGI art. 224, V — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const CDHR_SMOOTHING_SLOPE: SourcedRate = {
+  value: 0.825,
+  unit: 'ratio',
+  source: 'CGI art. 224, V — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const CDHR_ALLOWANCE_PER_DEPENDENT_EUR: SourcedRate = {
+  value: 1_500,
+  unit: 'eur',
+  source: 'CGI art. 224, III-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const CDHR_ALLOWANCE_COUPLE_EUR: SourcedRate = {
+  value: 12_500,
+  unit: 'eur',
+  source: 'CGI art. 224, III-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053561826',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- Taxe sur les actifs non professionnels des holdings (art. 235 ter C) - */
+
+export const HOLDING_ASSET_TAX_RATE: SourcedRate = {
+  value: 0.2,
+  unit: 'ratio',
+  source: 'CGI art. 235 ter C, IV — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542687',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const HOLDING_ASSET_TAX_THRESHOLD_EUR: SourcedRate = {
+  value: 5_000_000,
+  unit: 'eur',
+  source: 'CGI art. 235 ter C, I-A-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542687',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const HOLDING_ASSET_TAX_CONTROL_PCT: SourcedRate = {
+  value: 0.5,
+  unit: 'ratio',
+  source: 'CGI art. 235 ter C, I-A-2° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542687',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const HOLDING_ASSET_TAX_PASSIVE_SHARE: SourcedRate = {
+  value: 0.5,
+  unit: 'ratio',
+  source: 'CGI art. 235 ter C, I-A-3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542687',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- Amendement Charasse (CGI art. 223 B) --------------------------------- */
+
+/** Exercice d'acquisition des titres + huit exercices suivants. */
+export const CHARASSE_REINTEGRATION_YEARS: SourcedRate = {
+  value: 9,
+  unit: 'years',
+  source: 'CGI art. 223 B al. 6 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048831317',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- Plan d'épargne retraite (CGI art. 163 quatervicies) ------------------ */
+
+export const PER_DEDUCTION_RATE: SourcedRate = {
+  value: 0.1,
+  unit: 'ratio',
+  source: 'CGI art. 163 quatervicies, I-2-a-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542827',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Les revenus d'activité sont retenus dans la limite de huit PASS. */
+export const PER_INCOME_CAP_PASS: SourcedRate = {
+  value: 8,
+  unit: 'ratio',
+  source: 'CGI art. 163 quatervicies, I-2-a-1° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542827',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Fraction non utilisée du plafond, reportable sur les cinq années suivantes. */
+export const PER_CARRY_YEARS: SourcedRate = {
+  value: 5,
+  unit: 'years',
+  source: 'CGI art. 163 quatervicies, I-2-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053542827',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- Mécénat d'entreprise (CGI art. 238 bis) ------------------------------ */
+
+export const MECENAT_RATE: SourcedRate = {
+  value: 0.6,
+  unit: 'ratio',
+  source: 'CGI art. 238 bis, 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054402913',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const MECENAT_RATE_ABOVE_THRESHOLD: SourcedRate = {
+  value: 0.4,
+  unit: 'ratio',
+  source: 'CGI art. 238 bis, 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054402913',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const MECENAT_RATE_THRESHOLD_EUR: SourcedRate = {
+  value: 2_000_000,
+  unit: 'eur',
+  source: 'CGI art. 238 bis, 2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054402913',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Plafond des versements retenus : 20 000 € ou 5 ‰ du CA si plus élevé. */
+export const MECENAT_CAP_FLOOR_EUR: SourcedRate = {
+  value: 20_000,
+  unit: 'eur',
+  source: 'CGI art. 238 bis, 3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054402913',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const MECENAT_CAP_REVENUE_SHARE: SourcedRate = {
+  value: 0.005,
+  unit: 'ratio',
+  source: 'CGI art. 238 bis, 3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054402913',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const MECENAT_CARRY_YEARS: SourcedRate = {
+  value: 5,
+  unit: 'years',
+  source: 'CGI art. 238 bis, 3 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054402913',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/* ---- Plus-value immobilière des particuliers ------------------------------ */
+
+export const PROPERTY_GAIN_IR_RATE: SourcedRate = {
+  value: 0.19,
+  unit: 'ratio',
+  source: 'CGI art. 200 B — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000030061684',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Frais d'acquisition, forfait applicable aux immeubles. */
+export const PROPERTY_ACQUISITION_COSTS_FLAT: SourcedRate = {
+  value: 0.075,
+  unit: 'ratio',
+  source: 'CGI art. 150 VB, II-3° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053544785',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Forfait travaux, ouvert au-delà de cinq ans de détention, à défaut de justificatifs. */
+export const PROPERTY_WORKS_FLAT: SourcedRate = {
+  value: 0.15,
+  unit: 'ratio',
+  source: 'CGI art. 150 VB, II-4° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053544785',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const PROPERTY_WORKS_FLAT_MIN_YEARS: SourcedRate = {
+  value: 5,
+  unit: 'years',
+  source: 'CGI art. 150 VB, II-4° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053544785',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Cession d'un prix inférieur ou égal à ce montant : exonérée. */
+export const PROPERTY_SMALL_SALE_EXEMPTION_EUR: SourcedRate = {
+  value: 15_000,
+  unit: 'eur',
+  source: 'CGI art. 150 U, II-6° — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053544910',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Abattement d'impôt sur le revenu : 6 %/an au-delà de la 5e, 4 % la 22e → exonéré à 22 ans. */
+export const PROPERTY_ALLOWANCE_IR_PER_YEAR: SourcedRate = {
+  value: 0.06,
+  unit: 'ratio',
+  source: 'CGI art. 150 VC, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047970756',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const PROPERTY_ALLOWANCE_IR_YEAR_22: SourcedRate = {
+  value: 0.04,
+  unit: 'ratio',
+  source: 'CGI art. 150 VC, I — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047970756',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/** Abattement de prélèvements sociaux : 1,65 %, puis 1,60 % la 22e, puis 9 % → exonéré à 30 ans. */
+export const PROPERTY_ALLOWANCE_PS_PER_YEAR: SourcedRate = {
+  value: 0.0165,
+  unit: 'ratio',
+  source: 'CSS art. L136-7, VI-2 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053584839',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const PROPERTY_ALLOWANCE_PS_YEAR_22: SourcedRate = {
+  value: 0.016,
+  unit: 'ratio',
+  source: 'CSS art. L136-7, VI-2-b — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053584839',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+export const PROPERTY_ALLOWANCE_PS_BEYOND_22: SourcedRate = {
+  value: 0.09,
+  unit: 'ratio',
+  source: 'CSS art. L136-7, VI-2-c — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053584839',
+  asOf: '2026-09-22',
+  status: 'verified',
+};
+
+/**
+ * Surtaxe sur les plus-values immobilières supérieures à 50 000 €.
+ * `rate` s'applique à la plus-value entière ; `smoothing` lisse l'entrée de
+ * tranche en retranchant `(upTo − PV) × smoothing`.
+ */
+export interface PropertySurtaxBracket {
+  upTo: number;
+  rate: number;
+  smoothing?: number;
+}
+
+export const PROPERTY_SURTAX_BRACKETS: SourcedRate<PropertySurtaxBracket[]> = {
+  value: [
+    { upTo: 50_000, rate: 0 },
+    { upTo: 60_000, rate: 0.02, smoothing: 1 / 20 },
+    { upTo: 100_000, rate: 0.02 },
+    { upTo: 110_000, rate: 0.03, smoothing: 1 / 10 },
+    { upTo: 150_000, rate: 0.03 },
+    { upTo: 160_000, rate: 0.04, smoothing: 15 / 100 },
+    { upTo: 200_000, rate: 0.04 },
+    { upTo: 210_000, rate: 0.05, smoothing: 20 / 100 },
+    { upTo: 250_000, rate: 0.05 },
+    { upTo: 260_000, rate: 0.06, smoothing: 25 / 100 },
+    { upTo: Number.POSITIVE_INFINITY, rate: 0.06 },
+  ],
+  unit: 'ratio',
+  source: 'CGI art. 1609 nonies G, III — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048806252',
+  asOf: '2026-09-22',
+  status: 'verified',
+};

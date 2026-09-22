@@ -59,8 +59,10 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
       .map((row, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(row[key]).toFixed(1)}`)
       .join(' ');
 
-  const active = hovered === null ? null : years[hovered] ?? null;
+  const active = hovered === null ? null : years[Math.min(hovered, years.length - 1)] ?? null;
   const last = years.at(-1)!;
+  // Lecture au clavier comme à la souris : le sélecteur d'exercice pilote le même détail.
+  const read = active ?? last;
 
   const pickNearest = (event: React.MouseEvent<SVGSVGElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
@@ -104,6 +106,21 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
         </label>
         <GrowthSelect label="Croissance CA" value={caGrowth} onChange={setCaGrowth} />
         <GrowthSelect label="Croissance charges" value={expenseGrowth} onChange={setExpenseGrowth} />
+        {/* Axe des exercices, distinct de la timeline qui rejoue les étapes *dans* l'année. */}
+        <label className="flex items-center gap-2 text-xs text-fg-muted">
+          Exercice lu
+          <select
+            className="field w-auto"
+            value={hovered ?? years.length - 1}
+            onChange={(e) => setHovered(Number(e.target.value))}
+          >
+            {years.map((row, i) => (
+              <option key={row.year} value={i}>
+                {row.year}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -194,9 +211,8 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
           ))}
         </svg>
         <p className="m-0 min-h-5 text-xs text-fg-muted" aria-live="polite">
-          {active
-            ? `${active.year} — groupe ${formatEuro(active.cumulativeGroupCash)} · perso ${formatEuro(active.cumulativePersonalCash)}`
-            : 'Survolez la courbe pour lire une année.'}
+          {`Exercice ${read.year} — groupe ${formatEuro(read.cumulativeGroupCash)} · perso ${formatEuro(read.cumulativePersonalCash)}`
+            + ` · déficit reporté ${formatEuro(read.deficitCarryForward)} · dette ${formatEuro(read.debtOutstanding)}`}
         </p>
       </figure>
 
@@ -211,7 +227,9 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
                 <th scope="col" className="py-1 pr-3 font-medium">Charges</th>
                 <th scope="col" className="py-1 pr-3 font-medium">IS</th>
                 <th scope="col" className="py-1 pr-3 font-medium">Cash groupe</th>
-                <th scope="col" className="py-1 font-medium">Cash perso</th>
+                <th scope="col" className="py-1 pr-3 font-medium">Cash perso</th>
+                <th scope="col" className="py-1 pr-3 font-medium">Déficit reporté</th>
+                <th scope="col" className="py-1 font-medium">Dette restante</th>
               </tr>
             </thead>
             <tbody className="font-amount">
@@ -222,7 +240,9 @@ export function Forecast({ scenario, whatIf }: ForecastProps) {
                   <td className="py-1 pr-3">{formatEuro(row.expensesHt)}</td>
                   <td className="py-1 pr-3">{formatEuro(row.corporateTaxDue)}</td>
                   <td className="py-1 pr-3">{formatEuro(row.netGroupCash)}</td>
-                  <td className="py-1">{formatEuro(row.netPersonalCash)}</td>
+                  <td className="py-1 pr-3">{formatEuro(row.netPersonalCash)}</td>
+                  <td className="py-1 pr-3">{formatEuro(row.deficitCarryForward)}</td>
+                  <td className="py-1">{formatEuro(row.debtOutstanding)}</td>
                 </tr>
               ))}
             </tbody>

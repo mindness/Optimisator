@@ -34,18 +34,38 @@ import {
   calculateMicroEnterprise,
   calculateMotherDaughterDividend,
   calculatePersonalIncomeTax,
+  findMaxGrossSalaryForTargetTMI,
   calculateSciIrIncome,
   calculateTnsContributions,
   calculateTnsDividendSurcharge,
   tnsGrossForNet,
   calculateVAT,
+  annualisedRevenue,
+  calculateCdhr,
+  calculateCharasseReintegration,
+  calculateGiftTax,
+  calculateHoldingAssetTax,
+  calculateMecenat,
+  calculatePerDeduction,
+  calculatePropertyGain,
+  calculateIfi,
+  calculateShareSaleTaxCompany,
+  calculateShareSaleTaxPerson,
+  cappedRentalAmortization,
   compareDividendTaxModes,
+  FULL_EXERCISE_DAYS,
+  imputeCarriedDeficit,
+  reducedRateThresholdFor,
+  isProfessionalFurnishedRental,
+  lateInterest,
+  loanInstallment,
   roundMoney,
   type CorporateTaxResult,
   type DividendArbitrage,
   type DividendTaxMode,
   type ExecutiveSalaryResult,
   type FiscalSituation,
+  type LoanInstallment,
   type PersonalIncomeTaxResult,
   type VatResult,
 } from './calculator';
@@ -60,6 +80,26 @@ import {
   IS_REDUCED_CA_CEILING_EUR,
   MOTHER_DAUGHTER_MIN_HOLDING_PCT,
   MOTHER_DAUGHTER_QPFC_RATE,
+  ANIMATRICE_EVIDENCE,
+  DEFICIT_FONCIER_GLOBAL_CAP_EUR,
+  DUTREIL_COLLECTIVE_YEARS,
+  DUTREIL_INDIVIDUAL_YEARS,
+  LMNP_DEFICIT_CARRY_YEARS,
+  LMP_RECEIPTS_THRESHOLD_EUR,
+  REPORT_CONTROL_PRESUMPTION_PCT,
+  REPORT_DONATION_PURGE_YEARS,
+  REPORT_DONATION_PURGE_YEARS_FUND,
+  REPORT_REINVESTMENT_QUOTA,
+  REPORT_REINVESTMENT_WINDOW_YEARS,
+  REPORT_REINVESTMENT_HOLDING_YEARS,
+  REPORT_SALE_WINDOW_YEARS,
+  SHARE_SALE_ALLOWANCE_ACQUISITION_CUTOFF_YEAR,
+  CDHR_RATE,
+  CHARASSE_REINTEGRATION_YEARS,
+  HOLDING_ASSET_TAX_CONTROL_PCT,
+  HOLDING_ASSET_TAX_RATE,
+  MECENAT_CARRY_YEARS,
+  PER_CARRY_YEARS,
 } from './taxRules';
 import {
   TIMELINE_STEPS,
@@ -68,8 +108,91 @@ import {
   type TimelineStepId,
 } from './timelineEngine';
 
+/* ------------------------------------------------------------------------ *
+ * P0 — exercices chaînés : ce qu'un exercice lègue au suivant.
+ * Toute règle à report s'y branche ; sans `carryIn`, le moteur est à l'identique.
+ * ------------------------------------------------------------------------ */
+
+/** Déficit reportable d'une entité (CGI art. 209, I pour l'IS ; art. 156 pour l'IR). */
+export interface DeficitStock {
+  carryForward: number;
+}
+
+/** Emprunt en cours : capital restant dû et rang de la prochaine échéance. */
+export interface LoanState {
+  principalOutstanding: number;
+  yearsElapsed: number;
+}
+
+/** Plus-value d'apport placée en report d'imposition (CGI art. 150-0 B ter). */
+export interface DeferredGain {
+  /** Identifiant du flux d'apport qui a créé le report. */
+  id: string;
+  /** Apporteur : la personne physique qui porte le report. */
+  holderId: string;
+  /** Société bénéficiaire de l'apport. */
+  companyId: string;
+  gain: number;
+  contributedYear: number;
+  /** Année de cession des titres apportés par la société bénéficiaire. */
+  soldYear?: number;
+  saleProceeds?: number;
+  /** Part du produit de cession effectivement remployée. */
+  reinvestedRatio?: number;
+  /** Part remployée dans un actif éligible (l'immobilier patrimonial ne l'est pas). */
+  reinvestedEligibleRatio?: number;
+  /** Remploi via un fonds : porte le délai de purge par donation à 11 ans. */
+  throughFund?: boolean;
+}
+
+/** Amortissements suivis d'un exercice à l'autre (usufruit temporaire, meublé au réel). */
+export interface AssetSchedule {
+  /** Valeur restant à amortir (usufruit temporaire acquis). */
+  remaining: number;
+  /** Dotation annuelle théorique. */
+  annual: number;
+  /** Dotation meublée non déduite, reportée sans limite (CGI art. 39 C, II-3). */
+  carriedForward: number;
+}
+
+export interface CarryOver {
+  /** Exercice auquel cet état se rapporte. */
+  year: number;
+  deficits: Record<string, DeficitStock>;
+  loans: Record<string, LoanState>;
+  reports150_0Bter: DeferredGain[];
+  amortizations: Record<string, AssetSchedule>;
+  /** Remplace `openingTreasury` dès le deuxième exercice. */
+  treasury: Record<string, number>;
+  /** Remplace `openingCca` dès le deuxième exercice. */
+  cca: Record<string, number>;
+  /** Plafond PER non utilisé par personne, reportable cinq ans (art. 163 quatervicies). */
+  perCeiling: Record<string, number>;
+  /** Versements de mécénat au-delà du plafond, reportables cinq exercices (art. 238 bis). */
+  mecenat: Record<string, number>;
+  /** Rachats à soi-même suivis pour l'amendement Charasse (art. 223 B). */
+  charasse: Record<string, { acquisitionPrice: number; yearIndex: number }>;
+}
+
+/** État d'ouverture vide : celui de l'exercice 1. */
+export function emptyCarryOver(year = new Date().getFullYear()): CarryOver {
+  return { year, deficits: {}, loans: {}, reports150_0Bter: [], amortizations: {}, treasury: {}, cca: {}, perCeiling: {}, mecenat: {}, charasse: {} };
+}
+
 /** Live What-If overrides (absolute EUR annual unless noted). */
 export interface WhatIfInputs {
+  /** Exercice simulé : sert aux durées de détention et aux délais de report. */
+  year?: number;
+  /**
+   * Durée de l'exercice en jours (365 par défaut). Un premier exercice écourté
+   * ne proratise pas que le calendrier : il réduit le plafond du taux réduit
+   * d'IS (CGI art. 219, I-b).
+   */
+  exerciseDays?: number;
+  /** Versement annuel sur un PER, déductible du revenu global (art. 163 quatervicies). */
+  perContribution?: number;
+  /** Personnes à charge du foyer, pour l'abattement de la contribution différentielle. */
+  dependents?: number;
   /** Absolute CA HT override (EUR). */
   caHt?: number;
   /** Multiplier applied when caHt is omitted (default 1). */
@@ -88,6 +211,12 @@ export interface WhatIfInputs {
   parts?: number;
   /** Situation du foyer, qui fixe le seuil de décote (défaut célibataire). */
   situation?: FiscalSituation;
+  /**
+   * Revenus imposables du foyer gagnés hors de ce schéma (salaire du conjoint,
+   * autre activité…), déjà nets de leur propre abattement. Ils occupent le bas
+   * du barème et remontent donc la TMI appliquée au schéma.
+   */
+  otherIncome?: number;
   /**
    * Régime d'imposition des dividendes perçus par la personne physique.
    * `auto` retient le moins coûteux à la TMI constatée.
@@ -121,6 +250,11 @@ export interface ResolvedScenarioSummary {
   dividendArbitrage: DividendArbitrage;
   /** Régime effectivement appliqué aux dividendes de ce scénario. */
   dividendTaxMode: DividendTaxMode;
+  /**
+   * Rémunération imposable maximale du dirigeant avant de basculer dans la
+   * tranche suivante, autres revenus du foyer déduits. `Infinity` à 45 %.
+   */
+  maxTaxableSalaryAtTmi: number;
   sciTaxDue: number;
   netGroupCash: number;
   /** Argent net après URSSAF, IS et IR personnel (rémunération + dividendes PFU). */
@@ -136,11 +270,15 @@ export interface ResolvedScenario {
   /** Model limits and financing alerts; results are not a distribution authorization. */
   warnings: string[];
   timelineOrder: TimelineStepId[];
+  /** État de clôture à passer en `carryIn` de l'exercice suivant. */
+  carryOut: CarryOver;
 }
 
 const OPERATING: readonly EntityType[] = ['sasu', 'eurl', 'sarl', 'micro_entreprise', 'entreprise_individuelle'];
 const COMPANIES: readonly EntityType[] = [...OPERATING, 'holding_sas', 'holding_sarl', 'sci_is', 'sci_ir'];
 const TRANSFERS: readonly FlowCategory[] = ['cca_advance', 'cca_reimbursement', 'loan_payment', 'capital_contribution'];
+/** Opérations patrimoniales : le flux porte des titres, pas de la trésorerie. */
+const SECURITIES: readonly FlowCategory[] = ['share_sale', 'share_contribution', 'donation', 'property_sale'];
 const PERIODS: Record<FlowEdgeData['periodicity'], number> = { monthly: 12, quarterly: 4, annual: 1, one_off: 1 };
 
 const isHolding = (type: EntityType) => type === 'holding_sas' || type === 'holding_sarl';
@@ -201,11 +339,35 @@ interface CompanyBook {
   reducedRateEligible: boolean;
   /** Bénéfice après IS et cotisations, hors dividendes et transferts. */
   netProfit: number;
+  /** Base d'imposition après imputation du déficit antérieur (P1). */
+  taxableAfterDeficit: number;
+  deficitImputed: number;
+  /** Stock de déficit reporté à l'exercice suivant. */
+  deficitCarryForward: number;
+  /** Déficit foncier imputé sur le revenu global de l'associé (10 700 €). */
+  foncierRelief: number;
+  /** Dotation aux amortissements déduite (SCI IS, meublé au réel plafonné). */
+  amort: number;
+  /** Amortissement de l'usufruit temporaire acquis (P5). */
+  usufructCharge: number;
+  /** Résultat de cession de titres entré au résultat imposable (P3). */
+  shareSaleAddition: number;
+  /** Statut de holding animatrice revendiqué (P6). */
+  animatrice: boolean;
+  /** Plafonnement de l'amortissement meublé (P8), absent hors régime réel. */
+  furnished?: { deducted: number; carriedForward: number; cap: number };
+  /** Recettes de l'activité meublée, pour la frontière LMNP / LMP. */
+  furnishedReceipts: number;
+  /** Versements de mécénat de l'exercice (CGI art. 238 bis). */
+  donations: number;
+  /** Réduction d'impôt de mécénat, absente hors versement. */
+  mecenat?: ReturnType<typeof calculateMecenat>;
 }
 
 export function resolveScenarioGraph(
   scenario: ScenarioState,
   inputs: WhatIfInputs = {},
+  carryIn?: CarryOver,
 ): ResolvedScenario {
   const entities = scenario.entities;
   const byId = new Map(entities.map((entity) => [entity.id, entity]));
@@ -237,8 +399,25 @@ export function resolveScenarioGraph(
   const sci = entities.find((entity) => isSci(entity.entityType));
   const sciRentHt = inputs.sciRentHt ?? (rentFlow ? annual(rentFlow) : undefined) ?? sci?.inputs?.rentalIncomeHt ?? 0;
 
+  // ---- P0 : état d'ouverture (exercice 1 = paramètres saisis, ensuite l'état reporté) ----
+  const year = inputs.year ?? carryIn?.year ?? new Date().getFullYear();
+  // Exercice écourté : plafond du taux réduit proratisé, CA ramené à douze mois.
+  const exerciseDays = Math.max(1, Math.min(inputs.exerciseDays ?? scenario.options?.exerciseDays ?? FULL_EXERCISE_DAYS, FULL_EXERCISE_DAYS));
+  const openingTreasuryOf = (id: string) => carryIn?.treasury[id] ?? byId.get(id)?.inputs?.openingTreasury ?? 0;
+  const openingCcaOf = (id: string) => carryIn?.cca[id] ?? byId.get(id)?.inputs?.openingCca ?? 0;
+
+  // ---- P2 : échéancier d'emprunt, calculé et non saisi ----
+  const installments = new Map<string, LoanInstallment>();
+  for (const flow of scenario.flows) {
+    if (flow.category !== 'loan_payment' || !flow.loan) continue;
+    const state = carryIn?.loans[flow.id];
+    installments.set(flow.id, loanInstallment(flow.loan, state?.principalOutstanding ?? flow.loan.principal, state?.yearsElapsed ?? 0));
+  }
+
   /** Montant annuel effectif d'un flux, curseurs appliqués. */
   const amountOf = (flow: FlowEdgeData): number => {
+    const installment = installments.get(flow.id);
+    if (installment) return installment.payment;
     if (flow.id === primaryRevenueFlow?.id) return caHt;
     if (primaryExpenseFlows.length === 1 && flow.id === primaryExpenseFlows[0]!.id) return expensesHt;
     if (flow.id === primarySalaryFlow?.id) return executiveNet;
@@ -249,7 +428,7 @@ export function resolveScenarioGraph(
   };
   const sumOf = (category: FlowCategory, side: 'sourceId' | 'targetId', entityId: string, pick: (flow: FlowEdgeData) => number = amountOf) =>
     roundMoney(flowsOf(category, side, entityId).reduce((sum, flow) => sum + pick(flow), 0));
-  const interestOf = (flow: FlowEdgeData) => flow.interestAmount ?? 0;
+  const interestOf = (flow: FlowEdgeData) => installments.get(flow.id)?.interest ?? flow.interestAmount ?? 0;
   // CGI art. 39, 1-3° : chaque compte courant est plafonné séparément, sur l'avance de l'exercice.
   const interestExcessOf = (flow: FlowEdgeData) =>
     flow.category === 'cca_advance' ? roundMoney(Math.max(0, interestOf(flow) - amountOf(flow) * CCA_INTEREST_CAP_RATE.value)) : 0;
@@ -274,6 +453,34 @@ export function resolveScenarioGraph(
     stake(integrationHolding.id, companyId) >= INTEGRATED_GROUP_MIN_HOLDING_PCT.value * 100);
   const qpfcRateFor = (holdingId: string, subsidiaryId: string) =>
     inGroup(holdingId) && inGroup(subsidiaryId) ? INTEGRATED_GROUP_QPFC_RATE.value : MOTHER_DAUGHTER_QPFC_RATE.value;
+
+  // ---- P5 : démembrement — une détention n'est plus un pourcentage plat ----
+  const ownerships = scenario.ownerships ?? [];
+  const usufructLinksOf = (ownerId: string) => ownerships.filter((own) =>
+    own.ownerId === ownerId && own.nature === 'usufruit' && (own.dureeAnnees ?? 0) > 0 && (own.acquisitionPrice ?? 0) > 0);
+  const usufructBaseOf = (ownerId: string) => roundMoney(usufructLinksOf(ownerId).reduce((sum, own) => sum + (own.acquisitionPrice ?? 0), 0));
+  const usufructAnnualOf = (ownerId: string) => roundMoney(usufructLinksOf(ownerId).reduce((sum, own) => sum + (own.acquisitionPrice ?? 0) / (own.dureeAnnees ?? 1), 0));
+  const usufructRemainingOf = (ownerId: string) => carryIn?.amortizations[ownerId]?.remaining ?? usufructBaseOf(ownerId);
+  /** Amortissement de l'usufruit temporaire acquis, chez l'usufruitier à l'IS (CE, 2019). */
+  const usufructChargeOf = (ownerId: string) => roundMoney(Math.min(usufructAnnualOf(ownerId), Math.max(0, usufructRemainingOf(ownerId))));
+
+  // ---- P3 : cession de titres par une société — pré-passe, le résultat entre au livre ----
+  const shareSaleFlows = scenario.flows.filter((flow) => flow.category === 'share_sale');
+  const holdingYearsOf = (flow: FlowEdgeData) =>
+    flow.share?.acquisitionYear === undefined ? 0 : Math.max(0, year - flow.share.acquisitionYear);
+  const companyShareSales = new Map<string, ReturnType<typeof calculateShareSaleTaxCompany>>();
+  for (const flow of shareSaleFlows) {
+    const seller = byId.get(flow.sourceId);
+    if (!seller || !isCompany(seller.entityType)) continue;
+    // Sans quote-part cédée renseignée, le régime des titres de participation n'est pas présumé.
+    companyShareSales.set(flow.id, calculateShareSaleTaxCompany(amountOf(flow), flow.share?.acquisitionPrice ?? 0, {
+      holdingYears: holdingYearsOf(flow),
+      stakePercent: flow.share?.soldPercent ?? 0,
+    }));
+  }
+  const shareSaleAdditionOf = (companyId: string) => roundMoney(shareSaleFlows
+    .filter((flow) => flow.sourceId === companyId)
+    .reduce((sum, flow) => sum + (companyShareSales.get(flow.id)?.taxableAddition ?? 0), 0));
 
   // ---- Livres par société -------------------------------------------------
   const books = new Map<string, CompanyBook>();
@@ -303,15 +510,57 @@ export function resolveScenarioGraph(
       .reduce((sum, flow) => sum + amountOf(flow) * qpfcRateFor(entity.id, flow.sourceId), 0));
     const interest = sci?.id === entity.id ? entity.inputs?.interestExpenses ?? 0 : 0;
     const other = sci?.id === entity.id ? entity.inputs?.otherCharges ?? 0 : 0;
-    const amort = entity.entityType === 'sci_is' ? entity.inputs?.buildingAmortization ?? 0 : 0;
-    const vat = franchise ? calculateVAT(0, 0) : calculateVAT(revenue, expenses);
-    const reducedRateEligible = revenue <= IS_REDUCED_CA_CEILING_EUR.value;
+    // P8 : meublé au réel — la dotation ne peut pas créer de déficit (CGI art. 39 C, II).
+    const meuble = entity.options?.locationMeubleeReelle ?? false;
+    const furnishedReceipts = roundMoney(revenue + rentReceived);
+    const furnished = meuble
+      ? cappedRentalAmortization(
+          entity.inputs?.buildingAmortization ?? 0,
+          furnishedReceipts,
+          roundMoney(expenses + interest + other + interestPaid),
+          carryIn?.amortizations[entity.id]?.carriedForward ?? 0,
+        )
+      : undefined;
+    const usufructCharge = usufructChargeOf(entity.id);
+    const shareSaleAddition = shareSaleAdditionOf(entity.id);
+    // Mécénat : la réduction s'impute sur l'IS, le versement n'est pas déductible (art. 238 bis, 8).
+    const donations = entity.inputs?.donations ?? 0;
+    const mecenat = donations > 0 || (carryIn?.mecenat[entity.id] ?? 0) > 0
+      ? calculateMecenat(donations, revenue, carryIn?.mecenat[entity.id] ?? 0)
+      : undefined;
+    const amort = furnished ? furnished.deducted
+      : entity.entityType === 'sci_is' ? entity.inputs?.buildingAmortization ?? 0 : 0;
+    // P6 : une holding pure n'ouvre pas droit à déduction ; animatrice et facturant, elle est assujettie.
+    const animatrice = entity.options?.animatrice ?? false;
+    const vat = franchise
+      ? calculateVAT(0, 0)
+      : isHolding(entity.entityType)
+        ? calculateVAT(animatrice ? feesReceived : 0, animatrice ? expenses : 0)
+        : calculateVAT(revenue, expenses);
+    const reducedRateEligible = annualisedRevenue(revenue, exerciseDays) <= IS_REDUCED_CA_CEILING_EUR.value;
 
     let taxable: number;
     let corporateTax = NO_TAX;
     let socialOnProfit = 0;
     let liberatoire = 0;
     let netProfit: number;
+    const deficitIn = carryIn?.deficits[entity.id]?.carryForward ?? 0;
+    let foncierRelief = 0;
+    let deficitImputed = 0;
+    let deficitCarryForward = deficitIn;
+    let taxableAfterDeficit = 0;
+    /**
+     * P1 — report déficitaire. Le résultat publié reste celui de l'exercice :
+     * seule la base d'imposition est réduite du déficit antérieur imputable
+     * (CGI art. 209, I). Un exercice déficitaire alimente le stock.
+     */
+    const taxBaseAfterDeficit = (raw: number): number => {
+      const imputation = imputeCarriedDeficit(roundMoney(raw + foncierRelief), deficitIn);
+      deficitImputed = imputation.imputed;
+      deficitCarryForward = imputation.stockAfter;
+      taxableAfterDeficit = imputation.taxableAfter;
+      return imputation.imputed > 0 ? imputation.taxableAfter : raw;
+    };
     if (isMicro(entity.entityType)) {
       const category = entity.microCategory ?? 'bnc';
       const micro = calculateMicroEnterprise(revenue, category);
@@ -319,37 +568,83 @@ export function resolveScenarioGraph(
       socialOnProfit = roundMoney(micro.socialContributions * (entity.options?.acre ? 1 - ACRE_MICRO_REDUCTION.value : 1));
       liberatoire = entity.options?.versementLiberatoire ? roundMoney(revenue * MICRO_VERSEMENT_LIBERATOIRE_RATES[category].value) : 0;
       netProfit = roundMoney(revenue - socialOnProfit - liberatoire - expenses - rentPaid - feesPaid - interestPaid);
+      taxBaseAfterDeficit(taxable);
     } else if (isSci(entity.entityType)) {
-      taxable = roundMoney(rentReceived + interestReceived - interest - amort - other - interestPaid);
-      if (taxRegime === 'is') corporateTax = calculateCorporateTax(taxable, reducedRateEligible);
+      taxable = roundMoney(rentReceived + interestReceived - interest - amort - other - interestPaid - usufructCharge + shareSaleAddition);
+      // Déficit foncier : imputable sur le revenu global dans la limite de 10 700 € (art. 156, I-3°).
+      if (entity.entityType === 'sci_ir' && taxable < 0) {
+        foncierRelief = roundMoney(Math.min(DEFICIT_FONCIER_GLOBAL_CAP_EUR.value, -taxable));
+      }
+      const base = taxBaseAfterDeficit(taxable);
+      if (taxRegime === 'is') corporateTax = calculateCorporateTax(base, reducedRateEligible, exerciseDays);
       netProfit = roundMoney(rentReceived + interestReceived - interest - other - interestPaid - corporateTax.taxDue);
     } else {
-      taxable = roundMoney(revenue + rentReceived + feesReceived + interestReceived + qpfc
-        - expenses - salary.totalCompanyCost - rentPaid - feesPaid - interestPaid + interestExcess);
+      taxable = roundMoney(revenue + rentReceived + feesReceived + interestReceived + qpfc + shareSaleAddition
+        - expenses - salary.totalCompanyCost - rentPaid - feesPaid - interestPaid - amort - usufructCharge + interestExcess);
       if (taxRegime === 'is') {
-        corporateTax = calculateCorporateTax(taxable, reducedRateEligible);
+        corporateTax = calculateCorporateTax(taxBaseAfterDeficit(taxable), reducedRateEligible, exerciseDays);
         // Les dividendes reçus sont encaissés en trésorerie ; seule la QPFC est imposée.
         netProfit = roundMoney(taxable - qpfc + dividendsReceived - corporateTax.taxDue);
       } else {
         socialOnProfit = calculateTnsContributions(taxable).contributions;
         taxable = roundMoney(taxable - socialOnProfit);
+        taxBaseAfterDeficit(taxable);
         netProfit = roundMoney(taxable - salaryNet);
       }
+    }
+    // La réduction de mécénat s'impute sur l'impôt dû, sans le rendre négatif.
+    if (mecenat) {
+      const relief = roundMoney(Math.min(corporateTax.taxDue, mecenat.reduction));
+      corporateTax = { ...corporateTax, taxDue: roundMoney(corporateTax.taxDue - relief), netProfit: roundMoney(corporateTax.netProfit + relief) };
+      netProfit = roundMoney(netProfit + relief - donations);
     }
     books.set(entity.id, {
       entity, taxRegime, revenue, expenses, salaryNet, salary, rentPaid, rentReceived, feesPaid, feesReceived,
       interestPaid, interestReceived, dividendsReceived, qpfc, taxable, corporateTax, socialOnProfit, liberatoire, interestExcess, vat,
       reducedRateEligible, netProfit,
+      taxableAfterDeficit, deficitImputed, deficitCarryForward, foncierRelief,
+      amort, usufructCharge, shareSaleAddition, animatrice, furnished, furnishedReceipts,
+      donations, mecenat,
     });
   }
+
+  /**
+   * Amendement Charasse (CGI art. 223 B, al. 6) : quand une société du groupe
+   * rachète les titres d'une société qui y entre aux personnes qui la
+   * contrôlent, les charges financières sont réintégrées au résultat d'ensemble
+   * pendant neuf exercices. C'est le contrecoup fiscal de l'OBO intégré.
+   */
+  const selfPurchases = shareSaleFlows.filter((flow) => {
+    const seller = byId.get(flow.sourceId);
+    const buyer = byId.get(flow.targetId);
+    if (!seller || !buyer || seller.entityType !== 'person' || !isCompany(buyer.entityType)) return false;
+    return stake(seller.id, buyer.id) > 50;
+  });
+  // La réintégration ne vise que le groupe intégré ; hors groupe, seul l'abus de droit est en jeu.
+  const charasseSales = selfPurchases.filter((flow) => inGroup(flow.targetId));
+  const charasseStates: Record<string, { acquisitionPrice: number; yearIndex: number }> = {};
+  let charasseReintegration = 0;
 
   // ---- Intégration fiscale : IS unique, filiales à leur IS seul, écart chez la mère ----
   let groupTaxable = 0;
   let groupTax: CorporateTaxResult | undefined;
   if (integrationHolding) {
     const members = [...books.values()].filter((book) => book.taxRegime === 'is' && inGroup(book.entity.id));
-    groupTaxable = roundMoney(members.reduce((sum, book) => sum + book.taxable, 0));
-    groupTax = calculateCorporateTax(groupTaxable, members.every((book) => book.reducedRateEligible));
+    const groupDebt = roundMoney(members.reduce((sum, book) => sum
+      + scenario.flows.filter((flow) => flow.category === 'loan_payment' && flow.sourceId === book.entity.id)
+        .reduce((debt, flow) => debt + (installments.get(flow.id)?.opening ?? flow.loan?.principal ?? 0), 0)
+      + openingCcaOf(book.entity.id), 0));
+    const financialCharges = roundMoney(members.reduce((sum, book) => sum + book.interestPaid, 0));
+    for (const flow of charasseSales) {
+      const carried = carryIn?.charasse[flow.id];
+      const acquisitionPrice = carried?.acquisitionPrice ?? amountOf(flow);
+      const yearIndex = carried ? carried.yearIndex : 0;
+      const charasse = calculateCharasseReintegration({ acquisitionPrice, groupAverageDebt: groupDebt, financialCharges, yearIndex });
+      charasseReintegration = roundMoney(charasseReintegration + charasse.reintegrated);
+      if (charasse.active) charasseStates[flow.id] = { acquisitionPrice, yearIndex: yearIndex + 1 };
+    }
+    groupTaxable = roundMoney(members.reduce((sum, book) => sum + book.taxable, 0) + charasseReintegration);
+    groupTax = calculateCorporateTax(groupTaxable, members.every((book) => book.reducedRateEligible), exerciseDays);
     const subsidiariesTax = roundMoney(members.filter((book) => book.entity.id !== integrationHolding.id)
       .reduce((sum, book) => sum + book.corporateTax.taxDue, 0));
     const mother = books.get(integrationHolding.id)!;
@@ -374,33 +669,49 @@ export function resolveScenarioGraph(
    * entre personnes physiques ; sans aucune détention, tout va au premier dirigeant.
    */
   const shareOf = (personId: string, companyId: string): number => {
-    const links = (scenario.ownerships ?? []).filter((own) => own.companyId === companyId && typeOf(own.ownerId) === 'person');
-    if (links.length === 0) return personId === primaryPerson?.id ? 1 : 0;
+    const all = ownerships.filter((own) => own.companyId === companyId && typeOf(own.ownerId) === 'person');
+    if (all.length === 0) return personId === primaryPerson?.id ? 1 : 0;
+    // P5 : les fruits reviennent à l'usufruitier ; le nu-propriétaire n'a pas de quote-part de résultat.
+    const links = all.some((own) => own.nature === 'usufruit') ? all.filter((own) => own.nature !== 'nue_propriete') : all;
     const total = links.reduce((sum, own) => sum + own.percent, 0);
+    if (total === 0) return 0;
     return (links.find((own) => own.ownerId === personId)?.percent ?? 0) / total;
   };
   // Revenus transparents : bénéfices IR (EURL / EI / micro hors versement libératoire), revenus fonciers SCI IR.
   const transparentIncomeOf = (personId: string) => roundMoney([...books.values()]
     .filter((book) => book.taxRegime === 'ir' && !book.liberatoire)
-    .reduce((sum, book) => sum + Math.max(0, book.taxable) * shareOf(personId, book.entity.id), 0));
+    .reduce((sum, book) => sum + (Math.max(0, book.taxableAfterDeficit) - book.foncierRelief) * shareOf(personId, book.entity.id), 0));
   const salaryNetImposableOf = (personId: string) => roundMoney([...books.values()]
     .reduce((sum, book) => sum + book.salary.netImposable * (sumOf('salary', 'sourceId', book.entity.id) > 0 ? sumOf('salary', 'sourceId', book.entity.id, (f) => f.targetId === personId ? amountOf(f) : 0) / sumOf('salary', 'sourceId', book.entity.id) : 0), 0));
   // SCI IR : prélèvements sociaux sur le revenu foncier, en plus du barème.
   const sciIrLeviesOf = (personId: string) => roundMoney([...books.values()].filter((book) => book.entity.entityType === 'sci_ir')
     .reduce((sum, book) => sum + calculateSciIrIncome(book.rentReceived, book.entity.inputs?.interestExpenses ?? 0, book.entity.inputs?.otherCharges ?? 0, 0).socialLevies * shareOf(personId, book.entity.id), 0));
-  const transparentIncome = transparentIncomeOf(primaryPerson?.id ?? '');
+  const otherIncome = Math.max(0, inputs.otherIncome ?? 0);
+  // Les revenus gagnés ailleurs entrent au barème du même foyer : ils décalent la TMI du schéma.
+  const transparentIncome = roundMoney(transparentIncomeOf(primaryPerson?.id ?? '') + otherIncome);
   const salaryNetImposable = salaryNetImposableOf(primaryPerson?.id ?? '');
-  const salaryIncomeTax = calculatePersonalIncomeTax(salaryNetImposable, parts, { situation, otherTaxableIncome: transparentIncome });
+  // PER : le versement se déduit du revenu net global, plafonné à 10 % des revenus
+  // d'activité retenus dans la limite de huit PASS (CGI art. 163 quatervicies).
+  const per = calculatePerDeduction(
+    Math.max(0, inputs.perContribution ?? 0),
+    roundMoney(salaryNetImposable + transparentIncome),
+    { carriedCeiling: carryIn?.perCeiling[primaryPerson?.id ?? ''] ?? 0 },
+  );
+  // La déduction s'impute d'abord sur les revenus transparents, puis sur la rémunération.
+  const transparentAfterPer = roundMoney(Math.max(0, transparentIncome - per.deducted));
+  const salaryAfterPer = roundMoney(Math.max(0, salaryNetImposable - Math.max(0, per.deducted - transparentIncome)));
+  const salaryIncomeTax = calculatePersonalIncomeTax(salaryAfterPer, parts, { situation, otherTaxableIncome: transparentAfterPer });
   const dividendArbitrage = compareDividendTaxModes(personalDividendGross, salaryIncomeTax.marginalRate);
   const requestedMode = inputs.dividendTaxMode ?? 'auto';
   const dividendTaxMode: DividendTaxMode = requestedMode === 'auto' ? dividendArbitrage.best.mode : requestedMode;
   const personalIncomeTax = dividendTaxMode === 'bareme'
-    ? calculatePersonalIncomeTax(salaryNetImposable, parts, { situation, otherTaxableIncome: roundMoney(transparentIncome + dividendArbitrage.bareme.taxableBase) })
+    ? calculatePersonalIncomeTax(salaryAfterPer, parts, { situation, otherTaxableIncome: roundMoney(transparentAfterPer + dividendArbitrage.bareme.taxableBase) })
     : salaryIncomeTax;
   // ponytail: le foyer (parts, situation) des curseurs vaut pour le premier dirigeant ; les autres associés sont à 1 part, célibataire.
-  const incomeTaxOf = (personId: string) => personId === primaryPerson?.id
-    ? salaryIncomeTax.taxDue
-    : calculatePersonalIncomeTax(salaryNetImposableOf(personId), 1, { situation: 'single', otherTaxableIncome: transparentIncomeOf(personId) }).taxDue;
+  const incomeTaxResultOf = (personId: string) => personId === primaryPerson?.id
+    ? salaryIncomeTax
+    : calculatePersonalIncomeTax(salaryNetImposableOf(personId), 1, { situation: 'single', otherTaxableIncome: transparentIncomeOf(personId) });
+  const incomeTaxOf = (personId: string) => incomeTaxResultOf(personId).taxDue;
 
   // ---- Flux résolus -----------------------------------------------------------
   const calculations: TaxCalculationResult[] = [];
@@ -414,6 +725,10 @@ export function resolveScenarioGraph(
   const debtorCcaFlows = scenario.flows.filter((flow) =>
     flow.category === 'cca_advance' && flow.amount > 0 && typeOf(flow.targetId) === 'person' && typeOf(flow.sourceId) !== 'person');
   const tnsSurcharges = new Map<string, number>();
+  /** Droits de mutation supportés par chaque donataire (P7). */
+  const giftDuties = new Map<string, number>();
+  /** Plus-values immobilières des particuliers, par flux. */
+  const propertyGains = new Map<string, ReturnType<typeof calculatePropertyGain>>();
 
   for (const flow of sortedFlows) {
     const timelineStepId = timelineStepIdForCategory(flow.category);
@@ -448,7 +763,7 @@ export function resolveScenarioGraph(
       }
       case 'management_fees': {
         if (source && target && books.has(target.id)) {
-          const fees = calculateCorporateTax(resolvedAmount, true);
+          const fees = calculateCorporateTax(resolvedAmount, true, exerciseDays);
           flowTax = taxResult({
             flowId: flow.id, category: 'management_fees', grossAmount: resolvedAmount, taxAmount: fees.taxDue, netAmount: fees.netProfit,
             legalNoteId: 'management-fees',
@@ -501,7 +816,7 @@ export function resolveScenarioGraph(
           let extra = 0;
           // Gérant majoritaire TNS : dividendes > 10 % (capital + CCA) cotisent (CSS L131-6).
           if ((source.socialRegime ?? DEFAULT_SOCIAL_REGIME[source.entityType]) === 'tns' && (source.entityType === 'eurl' || source.entityType === 'sarl' || source.entityType === 'holding_sarl')) {
-            const capitalBase = (source.inputs?.capital ?? 0) + (source.inputs?.openingCca ?? 0) + sumOf('cca_advance', 'targetId', source.id) + sumOf('capital_contribution', 'targetId', source.id);
+            const capitalBase = (source.inputs?.capital ?? 0) + openingCcaOf(source.id) + sumOf('cca_advance', 'targetId', source.id) + sumOf('capital_contribution', 'targetId', source.id);
             const surcharge = calculateTnsDividendSurcharge(resolvedAmount, capitalBase, books.get(source.id)?.salary.grossSalary ?? 0);
             extra = surcharge.contributions;
             tnsSurcharges.set(source.id, roundMoney((tnsSurcharges.get(source.id) ?? 0) + extra));
@@ -541,6 +856,104 @@ export function resolveScenarioGraph(
         });
         break;
       }
+      case 'share_sale': {
+        if (!source) break;
+        const acquisitionPrice = flow.share?.acquisitionPrice ?? 0;
+        const holdingYears = holdingYearsOf(flow);
+        if (source.entityType === 'person') {
+          const sale = calculateShareSaleTaxPerson(resolvedAmount, acquisitionPrice, {
+            mode: dividendTaxMode,
+            marginalRate: salaryIncomeTax.marginalRate,
+            holdingYears,
+            acquisitionYear: flow.share?.acquisitionYear,
+            retirementAllowance: flow.share?.retirementAllowance,
+          });
+          const acquired = flow.share?.acquisitionYear;
+          flowTax = taxResult({
+            flowId: flow.id, category: 'share_sale', grossAmount: resolvedAmount,
+            taxAmount: sale.totalTax, netAmount: sale.netProceeds, breakdown: sale.breakdown,
+            warning: acquired !== undefined && acquired >= SHARE_SALE_ALLOWANCE_ACQUISITION_CUTOFF_YEAR.value
+              ? `Titres acquis en ${acquired} : aucun abattement pour durée de détention — il est réservé aux titres acquis avant ${SHARE_SALE_ALLOWANCE_ACQUISITION_CUTOFF_YEAR.value} (CGI art. 150-0 D, 1 ter-B-1°).`
+              : dividendTaxMode === 'pfu' && holdingYears >= 2
+                ? 'Abattement pour durée de détention indisponible sous PFU : il suppose l’option globale pour le barème (CGI art. 150-0 D, 1 ter-B-2°).'
+                : undefined,
+          });
+        } else if (isCompany(source.entityType)) {
+          const sale = companyShareSales.get(flow.id);
+          if (!sale) break;
+          flowTax = taxResult({
+            flowId: flow.id, category: 'share_sale', grossAmount: resolvedAmount,
+            // L'impôt est porté par l'IS de la société via la QPFC : jamais compté deux fois sur le flux.
+            taxAmount: 0, netAmount: resolvedAmount, breakdown: sale.breakdown,
+            warning: sale.participationRegime
+              ? undefined
+              : 'Régime des titres de participation non retenu : renseignez la quote-part cédée (≥ 5 %) et l’année d’acquisition (détention ≥ 2 ans), sinon la plus-value est imposée au taux normal.',
+          });
+        }
+        break;
+      }
+      case 'share_contribution': {
+        const gain = roundMoney(Math.max(0, resolvedAmount - (flow.contribution?.acquisitionPrice ?? 0)));
+        const controlled = (flow.contribution?.controlPercent ?? 0) >= REPORT_CONTROL_PRESUMPTION_PCT.value * 100;
+        flowTax = taxResult({
+          flowId: flow.id, category: 'share_contribution', grossAmount: resolvedAmount, taxAmount: 0, netAmount: resolvedAmount,
+          breakdown: [
+            line('Plus-value d’apport placée en report d’imposition', gain, 'CGI art. 150-0 B ter'),
+            line(`Remploi exigé si cession sous ${REPORT_SALE_WINDOW_YEARS.value} ans`, roundMoney(resolvedAmount * REPORT_REINVESTMENT_QUOTA.value), `${REPORT_REINVESTMENT_QUOTA.value * 100} % du produit de cession`),
+          ],
+          warning: controlled
+            ? undefined
+            : `Report subordonné au contrôle de la société bénéficiaire (présomption à ${(REPORT_CONTROL_PRESUMPTION_PCT.value * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %, CGI art. 150-0 B ter, III) : renseignez la quote-part détenue.`,
+        });
+        break;
+      }
+      case 'property_sale': {
+        if (!source) break;
+        const property = flow.property;
+        const holdingYears = property?.acquisitionYear === undefined ? 0 : Math.max(0, year - property.acquisitionYear);
+        if (source.entityType === 'person') {
+          const gain = calculatePropertyGain(resolvedAmount, property?.acquisitionPrice ?? 0, {
+            holdingYears,
+            principalResidence: property?.principalResidence,
+            worksAmount: property?.worksAmount,
+            deductedAmortization: property?.deductedAmortization,
+          });
+          propertyGains.set(flow.id, gain);
+          flowTax = taxResult({
+            flowId: flow.id, category: 'property_sale', grossAmount: resolvedAmount,
+            taxAmount: gain.totalTax, netAmount: gain.netProceeds, breakdown: gain.breakdown,
+            warning: property?.deductedAmortization
+              ? 'Amortissements de location meublée réintégrés au prix d’acquisition (CGI art. 150 VB, III) : l’économie faite pendant la détention est reprise à la cession.'
+              : property?.acquisitionYear === undefined
+                ? 'Année d’acquisition non renseignée : aucun abattement pour durée de détention appliqué.'
+                : undefined,
+          });
+        } else if (isCompany(source.entityType)) {
+          // Société à l'IS : la plus-value entre au résultat au taux normal, pas de régime des particuliers.
+          flowTax = taxResult({
+            flowId: flow.id, category: 'property_sale', grossAmount: resolvedAmount, taxAmount: 0, netAmount: resolvedAmount,
+            breakdown: [line('Plus-value intégrée au résultat imposable', roundMoney(Math.max(0, resolvedAmount - (property?.acquisitionPrice ?? 0))), 'société à l’IS : ni abattement pour durée, ni exonération de résidence principale')],
+            warning: 'Cession par une société à l’IS : la plus-value est calculée sur la valeur nette comptable, que le moteur ne suit pas. Renseignez un prix d’acquisition déjà net d’amortissements.',
+          });
+        }
+        break;
+      }
+      case 'donation': {
+        const gift = calculateGiftTax(resolvedAmount, {
+          dutreil: flow.gift?.dutreil,
+          reserveUsufruit: flow.gift?.reserveUsufruit,
+          previousAbatementUsed: flow.gift?.previousAbatementUsed,
+        });
+        if (target) giftDuties.set(target.id, roundMoney((giftDuties.get(target.id) ?? 0) + gift.duties));
+        flowTax = taxResult({
+          flowId: flow.id, category: 'donation', grossAmount: resolvedAmount,
+          taxAmount: gift.duties, netAmount: gift.netTransferred, breakdown: gift.breakdown,
+          warning: flow.gift?.dutreil
+            ? `Dutreil : engagement collectif de ${DUTREIL_COLLECTIVE_YEARS.value} ans en cours au jour de la transmission, engagement individuel de ${DUTREIL_INDIVIDUAL_YEARS.value} ans et fonction de direction — conditions à vérifier, jamais supposées (CGI art. 787 B).`
+            : undefined,
+        });
+        break;
+      }
       default:
         break;
     }
@@ -557,11 +970,150 @@ export function resolveScenarioGraph(
   // L'échéance d'emprunt sort en entier de la trésorerie ; ses intérêts, déjà déduits du
   // résultat, sont rajoutés pour ne pas les compter deux fois.
   const loanInterestFor = (entityId: string) => sumOf('loan_payment', 'sourceId', entityId, interestOf);
-  const ccaBalanceFor = (companyId: string) => roundMoney((byId.get(companyId)?.inputs?.openingCca ?? 0) + resolvedFlows.reduce((sum, flow) => {
+  const ccaBalanceFor = (companyId: string) => roundMoney(openingCcaOf(companyId) + resolvedFlows.reduce((sum, flow) => {
     if (flow.category === 'cca_advance' && flow.targetId === companyId) return sum + flow.resolvedAmount;
     if (flow.category === 'cca_reimbursement' && flow.sourceId === companyId) return sum - flow.resolvedAmount;
     return sum;
   }, 0));
+
+  const shareCashFor = (entityId: string) => roundMoney(resolvedFlows
+    .filter((flow) => flow.category === 'share_sale')
+    .reduce((sum, flow) => sum
+      + (flow.sourceId === entityId ? flow.resolvedAmount - (flow.taxResult?.taxAmount ?? 0) : 0)
+      - (flow.targetId === entityId ? flow.resolvedAmount : 0), 0));
+  const debtOutstandingFor = (entityId: string) => roundMoney(scenario.flows
+    .filter((flow) => flow.category === 'loan_payment' && flow.sourceId === entityId && flow.loan)
+    .reduce((sum, flow) => sum + (installments.get(flow.id)?.closing ?? 0), 0));
+
+  // ---- P4 : report d'imposition 150-0 B ter, suivi d'un exercice à l'autre ----
+  const reports: DeferredGain[] = (carryIn?.reports150_0Bter ?? []).map((report) => ({ ...report }));
+  for (const flow of scenario.flows) {
+    if (flow.category !== 'share_contribution' || reports.some((report) => report.id === flow.id)) continue;
+    reports.push({
+      id: flow.id,
+      holderId: flow.sourceId,
+      companyId: flow.targetId,
+      gain: roundMoney(Math.max(0, amountOf(flow) - (flow.contribution?.acquisitionPrice ?? 0))),
+      contributedYear: year,
+    });
+  }
+  for (const flow of shareSaleFlows) {
+    const report = flow.share?.deferredContributionId
+      ? reports.find((candidate) => candidate.id === flow.share!.deferredContributionId)
+      : reports.find((candidate) => candidate.companyId === flow.sourceId && candidate.soldYear === undefined);
+    if (!report || report.soldYear !== undefined) continue;
+    const reinvestment = flow.share?.reinvestment;
+    report.soldYear = year;
+    report.saleProceeds = amountOf(flow);
+    report.reinvestedRatio = reinvestment?.ratio ?? 0;
+    // L'immobilier patrimonial est exclu du remploi éligible : seule la poche libre de 30 % l'absorbe.
+    report.reinvestedEligibleRatio = reinvestment && reinvestment.kind !== 'immobilier' ? reinvestment.ratio : 0;
+    report.throughFund = reinvestment?.kind === 'fonds';
+  }
+  const purged = new Set<string>();
+  for (const flow of scenario.flows) {
+    const linked = flow.category === 'donation' ? flow.gift?.deferredContributionId : undefined;
+    const report = linked ? reports.find((candidate) => candidate.id === linked) : undefined;
+    if (!report) continue;
+    const purgeYears = report.throughFund ? REPORT_DONATION_PURGE_YEARS_FUND.value : REPORT_DONATION_PURGE_YEARS.value;
+    if (year - report.contributedYear >= purgeYears) purged.add(report.id);
+  }
+  const forfeits: Array<{ report: DeferredGain; tax: number; interest: number }> = [];
+  const openReports = reports.filter((report) => {
+    if (purged.has(report.id)) return false;
+    const sold = report.soldYear;
+    // Pas de cession, ou cession au-delà de trois ans : aucune obligation de remploi.
+    if (sold === undefined || sold - report.contributedYear >= REPORT_SALE_WINDOW_YEARS.value) return true;
+    if (year - sold < REPORT_REINVESTMENT_WINDOW_YEARS.value) return true;
+    if ((report.reinvestedEligibleRatio ?? 0) >= REPORT_REINVESTMENT_QUOTA.value) return true;
+    const tax = calculateFlatTax(report.gain).totalTax;
+    forfeits.push({ report, tax, interest: lateInterest(tax, (year - report.contributedYear) * 12) });
+    return false;
+  });
+  const forfeitFor = (personId: string) => roundMoney(forfeits
+    .filter((forfeit) => forfeit.report.holderId === personId)
+    .reduce((sum, forfeit) => sum + forfeit.tax + forfeit.interest, 0));
+
+  // ---- P6 : assiette IFI — biens professionnels et holding animatrice exonérés ----
+  const ifiBaseOf = (personId: string) => roundMoney((byId.get(personId)?.inputs?.realEstateValue ?? 0) + ownerships
+    .filter((own) => own.ownerId === personId)
+    .reduce((sum, own) => {
+      const company = byId.get(own.companyId);
+      const value = company?.inputs?.realEstateValue ?? 0;
+      if (!company || !value) return sum;
+      if (OPERATING.includes(company.entityType) || company.options?.animatrice) return sum;
+      // CGI art. 968 : l'usufruitier est imposé sur la valeur en pleine propriété.
+      if (own.nature === 'nue_propriete') return sum;
+      return sum + value * (own.percent / 100);
+    }, 0));
+
+  /** Trésorerie d'une cession immobilière : le prix entre, l'impôt sort. */
+  const propertyCashFor = (entityId: string) => roundMoney(resolvedFlows
+    .filter((flow) => flow.category === 'property_sale')
+    .reduce((sum, flow) => sum
+      + (flow.sourceId === entityId ? flow.resolvedAmount - (flow.taxResult?.taxAmount ?? 0) : 0)
+      - (flow.targetId === entityId ? flow.resolvedAmount : 0), 0));
+
+  // ---- Taxe de 20 % sur les actifs non professionnels des holdings (art. 235 ter C) ----
+  /** Détention par une personne physique, directe ou via une société qu'elle contrôle à 50 % au moins. */
+  const individualControlOf = (companyId: string) => Math.max(0, ...persons.map((person) => {
+    const direct = stake(person.id, companyId);
+    if (direct >= HOLDING_ASSET_TAX_CONTROL_PCT.value * 100) return 100;
+    const through = entities
+      .filter((holder) => isCompany(holder.entityType) && stake(person.id, holder.id) >= HOLDING_ASSET_TAX_CONTROL_PCT.value * 100)
+      .reduce((best, holder) => Math.max(best, stake(holder.id, companyId)), 0);
+    return Math.max(direct, through);
+  }), 0);
+  const holdingAssetTaxOf = (book: CompanyBook) => {
+    const totalAssets = book.entity.inputs?.totalAssets ?? 0;
+    const nonProfessionalAssets = book.entity.inputs?.nonProfessionalAssets ?? 0;
+    if (totalAssets <= 0 && nonProfessionalAssets <= 0) return undefined;
+    // Revenus passifs de l'art. 235 ter C, I-B-2 : dividendes, intérêts, loyers, redevances.
+    const passiveIncome = roundMoney(book.dividendsReceived + book.interestReceived + book.rentReceived);
+    const totalIncome = roundMoney(passiveIncome + book.revenue + book.feesReceived);
+    return calculateHoldingAssetTax({
+      totalAssets,
+      nonProfessionalAssets,
+      deductibleDebt: debtOutstandingFor(book.entity.id),
+      individualControlPercent: individualControlOf(book.entity.id),
+      passiveIncome,
+      totalIncome,
+    });
+  };
+  const holdingAssetTaxes = new Map<string, ReturnType<typeof calculateHoldingAssetTax>>();
+  for (const book of books.values()) {
+    const tax = holdingAssetTaxOf(book);
+    if (tax) holdingAssetTaxes.set(book.entity.id, tax);
+  }
+
+  // ---- Contribution différentielle sur les hauts revenus (art. 224) ----
+  const personGainsOf = (personId: string) => roundMoney(resolvedFlows.reduce((sum, flow) => {
+    if (flow.sourceId !== personId) return sum;
+    if (flow.category === 'share_sale') return sum + Math.max(0, flow.resolvedAmount - (flow.share?.acquisitionPrice ?? 0));
+    if (flow.category === 'property_sale') return sum + (propertyGains.get(flow.id)?.taxableIncomeTax ?? 0);
+    return sum;
+  }, 0));
+  const personFlowTaxOf = (personId: string) => roundMoney(resolvedFlows.reduce((sum, flow) => {
+    const taxed = flow.category === 'dividend' || flow.category === 'share_sale' || flow.category === 'property_sale';
+    if (!taxed) return sum;
+    const concerned = flow.category === 'dividend' ? flow.targetId === personId : flow.sourceId === personId;
+    return concerned ? sum + (flow.taxResult?.taxAmount ?? 0) : sum;
+  }, 0));
+  /**
+   * Revenu de référence reconstitué à partir de ce que le moteur connaît :
+   * rémunération imposable, revenus transparents, dividendes bruts et
+   * plus-values. Ce n'est pas le revenu fiscal de référence complet de
+   * l'art. 1417, qui intègre des revenus hors schéma.
+   */
+  const cdhrFor = (personId: string) => {
+    const dividends = roundMoney(resolvedFlows
+      .filter((flow) => flow.category === 'dividend' && flow.targetId === personId)
+      .reduce((sum, flow) => sum + flow.resolvedAmount, 0));
+    const income = roundMoney(salaryNetImposableOf(personId) + transparentIncomeOf(personId)
+      + (personId === primaryPerson?.id ? otherIncome : 0) + dividends + personGainsOf(personId));
+    const paid = roundMoney(incomeTaxOf(personId) + sciIrLeviesOf(personId) + personFlowTaxOf(personId));
+    return calculateCdhr(income, paid, { situation: personId === primaryPerson?.id ? situation : 'single', dependents: personId === primaryPerson?.id ? inputs.dependents : 0 });
+  };
 
   const resolvedEntities: ResolvedEntity[] = entities.map((entity) => {
     const metrics: EntityMetrics = { ...(entity.metrics ?? {}) };
@@ -571,10 +1123,17 @@ export function resolveScenarioGraph(
       const vatCashAdjustment = roundMoney(book.vat.vatCollected - book.vat.vatDeductible - book.vat.netVatDue);
       const surcharge = tnsSurcharges.get(entity.id) ?? 0;
       metrics.fiscalResult = book.taxable;
+      metrics.vatDeductible = book.vat.vatDeductible;
       metrics.corporateTax = book.corporateTax.taxDue;
       metrics.netProfit = roundMoney(book.netProfit - surcharge);
-      metrics.treasury = roundMoney((entity.inputs?.openingTreasury ?? 0) + metrics.netProfit + vatCashAdjustment
-        + transfersFor(entity.id) + loanInterestFor(entity.id) - outgoingDividends(entity.id));
+      metrics.treasury = roundMoney(openingTreasuryOf(entity.id) + metrics.netProfit + vatCashAdjustment
+        + transfersFor(entity.id) + loanInterestFor(entity.id) + shareCashFor(entity.id) - outgoingDividends(entity.id));
+      metrics.deficitCarryForward = book.deficitCarryForward;
+      metrics.debtOutstanding = debtOutstandingFor(entity.id);
+      metrics.mecenatReduction = book.mecenat?.reduction ?? 0;
+      const assetTax = holdingAssetTaxes.get(entity.id);
+      metrics.holdingAssetTax = assetTax?.due ?? 0;
+      metrics.treasury = roundMoney(metrics.treasury - (assetTax?.due ?? 0) + propertyCashFor(entity.id));
       metrics.ccaBalance = ccaBalanceFor(entity.id);
     } else if (entity.entityType === 'person') {
       const received = roundMoney(resolvedFlows.filter((flow) =>
@@ -585,8 +1144,15 @@ export function resolveScenarioGraph(
       // Les dividendes portent leur propre imposition dans le flux : l'IR ici est celui des
       // rémunérations et revenus transparents, plus les prélèvements sociaux SCI IR.
       const irDue = roundMoney(incomeTaxOf(entity.id) + sciIrLeviesOf(entity.id));
+      const ifi = calculateIfi(ifiBaseOf(entity.id));
       metrics.personalIncomeTax = irDue;
-      metrics.netPersonalCash = roundMoney(received + interestNet - irDue + transfersFor(entity.id));
+      metrics.marginalRate = incomeTaxResultOf(entity.id).marginalRate;
+      metrics.ifiDue = ifi.due;
+      const cdhr = cdhrFor(entity.id);
+      metrics.cdhrDue = cdhr.due;
+      metrics.netPersonalCash = roundMoney(received + interestNet - irDue + transfersFor(entity.id)
+        + shareCashFor(entity.id) + propertyCashFor(entity.id) - (giftDuties.get(entity.id) ?? 0)
+        - forfeitFor(entity.id) - ifi.due - cdhr.due);
       metrics.treasury = metrics.netPersonalCash;
     }
     return { ...entity, metrics };
@@ -608,6 +1174,9 @@ export function resolveScenarioGraph(
     warnings.push(book.reducedRateEligible
       ? `${book.entity.label} : IS réduit 15 % appliqué (CA ≤ 10 M€) ; conditions de détention du capital (libéré, ≥ 75 % personnes physiques) non contrôlées.`
       : `${book.entity.label} : CA > 10 M€, taux réduit d’IS non applicable (CGI art. 219 I-b).`);
+    if (exerciseDays < FULL_EXERCISE_DAYS && book.reducedRateEligible) {
+      warnings.push(`${book.entity.label} : exercice de ${exerciseDays} jours — plafond du taux réduit ramené à ${reducedRateThresholdFor(exerciseDays).toLocaleString('fr-FR')} € (CGI art. 219, I-b, « par période de douze mois ») et chiffre d’affaires annualisé pour le test des 10 M€.`);
+    }
   }
   for (const flow of scenario.flows) {
     const target = byId.get(flow.targetId);
@@ -665,6 +1234,99 @@ export function resolveScenarioGraph(
     if ((entity.metrics.treasury ?? 0) < 0) warnings.push(`${entity.label} : trésorerie négative, scénario non financé dans les hypothèses actuelles.`);
   }
 
+  // ---- Exhaustivité des montages : ce qui est appliqué, et ce qui ne l'est pas ----
+  const euros = (amount: number) => amount.toLocaleString('fr-FR');
+  for (const book of books.values()) {
+    const label = book.entity.label;
+    if (book.deficitImputed > 0) {
+      warnings.push(`${label} : ${euros(book.deficitImputed)} € de déficit antérieur imputés (CGI art. 209, I — 1 000 000 € + 50 % de la fraction au-delà). Le report en arrière (art. 220 quinquies) n’est pas modélisé.`);
+    }
+    if (book.deficitCarryForward > 0) {
+      warnings.push(`${label} : ${euros(book.deficitCarryForward)} € de déficit reportés sur les exercices suivants ; le changement d’activité réelle (art. 221, 5) qui ferait tomber le report n’est pas contrôlé.`);
+    }
+    if (book.foncierRelief > 0) {
+      warnings.push(`${label} : déficit foncier imputé sur le revenu global à hauteur de ${euros(book.foncierRelief)} € (plafond ${euros(DEFICIT_FONCIER_GLOBAL_CAP_EUR.value)} €, CGI art. 156, I-3°) ; le surplus reste imputable sur les revenus fonciers des dix années suivantes, et la part provenant des intérêts d’emprunt n’est pas isolée.`);
+    }
+    if (book.usufructCharge > 0) {
+      warnings.push(`${label} : usufruit temporaire amorti sur sa durée (${euros(book.usufructCharge)} €/an). Le prix du droit démembré doit être validé par un expert indépendant ; l’abus de droit à but principalement fiscal (LPF art. L. 64 A) est signalé, jamais arbitré.`);
+    }
+    if (book.shareSaleAddition > 0) {
+      warnings.push(`${label} : résultat de cession de titres intégré au résultat imposable pour ${euros(book.shareSaleAddition)} € ; les moins-values antérieures et la valeur réelle des titres ne sont pas modélisées.`);
+    }
+    if (book.furnished) {
+      const professional = isProfessionalFurnishedRental(book.furnishedReceipts, Math.max(0, inputs.otherIncome ?? 0));
+      warnings.push(`${label} : location meublée au réel — régime ${professional ? 'LMP' : 'LMNP'} (recettes ${euros(book.furnishedReceipts)} €, seuil ${euros(LMP_RECEIPTS_THRESHOLD_EUR.value)} € et prépondérance, CGI art. 155, IV). ${professional ? 'Déficit imputable sur le revenu global.' : `Déficit imputable sur les seuls revenus de même nature pendant ${LMNP_DEFICIT_CARRY_YEARS.value} ans (art. 156, I-1° ter).`}`);
+      warnings.push(`${label} : amortissement plafonné au loyer diminué des autres charges (CGI art. 39 C, II) — ${euros(book.furnished.deducted)} € déduits, ${euros(book.furnished.carriedForward)} € reportés. L’amortissement par composants n’est pas décomposé, et la réintégration des amortissements dans la plus-value de cession n’est pas modélisée : vérifiez l’état du droit avant de conclure.`);
+      if (book.entity.entityType === 'sci_ir') {
+        warnings.push(`${label} : la location meublée est une activité commerciale par nature — une SCI à l’IR qui l’héberge bascule à l’impôt sur les sociétés (CGI art. 206, 2). Corrigez le régime du schéma.`);
+      }
+    }
+    if (book.animatrice) {
+      warnings.push(`${book.entity.label} : holding animatrice revendiquée — statut à prouver, jamais présumé. Preuves attendues : ${ANIMATRICE_EVIDENCE.join(' ')}`);
+    } else if (isHolding(book.entity.entityType) && (book.feesReceived > 0 || book.expenses > 0)) {
+      warnings.push(`${book.entity.label} : holding pure — aucun droit à déduction de TVA sur ses charges (coefficient de déduction nul). Seule une holding qui facture réellement ses filiales devient assujettie.`);
+    }
+  }
+  for (const report of openReports) {
+    if (report.soldYear === undefined) continue;
+    if (report.soldYear - report.contributedYear >= REPORT_SALE_WINDOW_YEARS.value) continue;
+    const eligible = report.reinvestedEligibleRatio ?? 0;
+    if (eligible < REPORT_REINVESTMENT_QUOTA.value) {
+      warnings.push(`Report 150-0 B ter : remploi éligible de ${Math.round(eligible * 100)} % sur les ${Math.round(REPORT_REINVESTMENT_QUOTA.value * 100)} % exigés, délai courant jusqu’en ${report.soldYear + REPORT_REINVESTMENT_WINDOW_YEARS.value}. La gestion de son propre patrimoine immobilier est exclue du remploi éligible : un OBO immobilier ne tient pas au-delà de la poche libre de ${Math.round((1 - REPORT_REINVESTMENT_QUOTA.value) * 100)} %.`);
+    } else {
+      warnings.push(`Report 150-0 B ter maintenu : remploi de ${Math.round(eligible * 100)} % à conserver ${REPORT_REINVESTMENT_HOLDING_YEARS.value} ans (CGI art. 150-0 B ter, I-2°).`);
+    }
+  }
+  for (const forfeit of forfeits) {
+    warnings.push(`Report 150-0 B ter déchu : plus-value de ${euros(forfeit.report.gain)} € imposée (${euros(forfeit.tax)} €) et intérêt de retard de ${euros(forfeit.interest)} € (CGI art. 1727) — remploi insuffisant dans le délai de ${REPORT_REINVESTMENT_WINDOW_YEARS.value} ans.`);
+  }
+  for (const own of ownerships) {
+    if (own.nature !== 'usufruit' || typeOf(own.ownerId) !== 'person' || !own.dureeAnnees) continue;
+    warnings.push(`${byId.get(own.ownerId)?.label ?? own.ownerId} : la cession d’un usufruit temporaire par une personne physique est imposée au barème dans la catégorie du revenu procuré, et non en plus-value (CGI art. 13, 5°). C’est ce qui motive de démembrer les parts plutôt que l’immeuble.`);
+  }
+  if (scenario.flows.some((flow) => SECURITIES.includes(flow.category))) {
+    warnings.push('Cessions, apports et donations : l’app prend un prix saisi, elle ne valorise pas les titres. Agrément, préemption et clauses statutaires ne sont pas vérifiés.');
+  }
+
+  // ---- Lot 2026 : contributions et taxes nouvelles ----
+  for (const book of books.values()) {
+    if (book.mecenat) {
+      warnings.push(`${book.entity.label} : mécénat — ${euros(book.mecenat.retained)} € retenus sur un plafond de ${euros(book.mecenat.cap)} € (20 000 € ou 5 ‰ du CA), réduction d’impôt de ${euros(book.mecenat.reduction)} € (CGI art. 238 bis). Les versements ne sont pas déductibles du bénéfice${book.mecenat.carriedForward > 0 ? `, et ${euros(book.mecenat.carriedForward)} € sont reportés sur les ${MECENAT_CARRY_YEARS.value} exercices suivants` : ''}.`);
+    }
+    const assetTax = holdingAssetTaxes.get(book.entity.id);
+    if (!assetTax) continue;
+    if (assetTax.liable) {
+      warnings.push(`${book.entity.label} : taxe de ${HOLDING_ASSET_TAX_RATE.value * 100} % sur les actifs non professionnels (CGI art. 235 ter C) — ${euros(assetTax.due)} € dus sur une assiette de ${euros(assetTax.taxableAssets)} €. Due au titre des exercices clos à compter du 31 décembre 2026 ; elle n’est pas déductible de l’IS.`);
+    } else {
+      const missing = [
+        assetTax.assetsOverThreshold ? null : 'actifs sous 5 M€',
+        assetTax.controlledByIndividual ? null : `détention par une personne physique sous ${HOLDING_ASSET_TAX_CONTROL_PCT.value * 100} %`,
+        assetTax.passiveIncomeMajority ? null : 'revenus passifs sous la moitié des produits',
+      ].filter(Boolean);
+      warnings.push(`${book.entity.label} : taxe sur les holdings patrimoniales non due — ${missing.join(', ')} (CGI art. 235 ter C, conditions cumulatives). La nature professionnelle des actifs n’est pas contrôlée.`);
+    }
+  }
+  if (charasseReintegration > 0) {
+    warnings.push(`Amendement Charasse : ${euros(charasseReintegration)} € de charges financières réintégrées au résultat d’ensemble (CGI art. 223 B, al. 6). La réintégration court sur l’exercice de rachat et les huit suivants, soit ${CHARASSE_REINTEGRATION_YEARS.value} exercices.`);
+  } else if (selfPurchases.length > 0) {
+    warnings.push('Rachat à soi-même détecté hors intégration fiscale : l’amendement Charasse ne s’applique pas, mais l’abus de droit reste à documenter (motifs économiques, prix d’expert).');
+  }
+  if (per.deducted > 0) {
+    warnings.push(`PER : ${euros(per.deducted)} € déduits du revenu global sur un plafond de ${euros(per.ceiling)} € (CGI art. 163 quatervicies)${per.unusedCeiling > 0 ? `, ${euros(per.unusedCeiling)} € reportés sur les ${PER_CARRY_YEARS.value} années suivantes` : ''}. La sortie en capital ou en rente n’est pas modélisée.`);
+  }
+  for (const entity of resolvedEntities) {
+    if (entity.entityType !== 'person' || !(entity.metrics.cdhrDue ?? 0)) continue;
+    warnings.push(`${entity.label} : contribution différentielle sur les hauts revenus — ${euros(entity.metrics.cdhrDue!)} € (CGI art. 224, imposition minimale de ${CDHR_RATE.value * 100} % à compter des revenus 2026). Le revenu de référence est reconstitué à partir du seul schéma : les revenus extérieurs non saisis le majoreraient.`);
+  }
+  for (const [flowId, gain] of propertyGains) {
+    const label = byId.get(scenario.flows.find((flow) => flow.id === flowId)?.sourceId ?? '')?.label ?? 'Cédant';
+    if (gain.exempt) {
+      warnings.push(`${label} : plus-value immobilière exonérée — ${gain.exemptionReason}`);
+    } else {
+      warnings.push(`${label} : plus-value immobilière de ${euros(gain.grossGain)} € — abattements pour durée de détention de ${Math.round(gain.allowanceIncomeTax * 100)} % à l’impôt sur le revenu et ${Math.round(gain.allowanceSocialLevies * 100)} % aux prélèvements sociaux (exonération à 22 et 30 ans)${gain.surtax ? `, surtaxe de ${euros(gain.surtax)} €` : ''}. Frais et travaux au forfait à défaut de justificatifs.`);
+    }
+  }
+
   return {
     scenarioId: scenario.id,
     entities: resolvedEntities,
@@ -679,12 +1341,42 @@ export function resolveScenarioGraph(
       personalIncomeTax,
       dividendArbitrage,
       dividendTaxMode,
+      maxTaxableSalaryAtTmi: findMaxGrossSalaryForTargetTMI(salaryIncomeTax.marginalRate, parts, transparentAfterPer),
       sciTaxDue: roundMoney([...books.values()].filter((book) => isSci(book.entity.entityType)).reduce((sum, book) => sum + book.corporateTax.taxDue, 0)),
       netGroupCash,
       netPersonalCash,
     },
     warnings,
     timelineOrder: timelineStepOrder(),
+    carryOut: {
+      year: year + 1,
+      deficits: Object.fromEntries([...books.values()]
+        .filter((book) => book.deficitCarryForward > 0)
+        .map((book) => [book.entity.id, { carryForward: book.deficitCarryForward }])),
+      loans: Object.fromEntries([...installments].map(([id, installment]) =>
+        [id, { principalOutstanding: installment.closing, yearsElapsed: installment.index + 1 }])),
+      reports150_0Bter: openReports,
+      amortizations: Object.fromEntries([...books.values()]
+        .map((book) => [book.entity.id, {
+          remaining: roundMoney(Math.max(0, usufructRemainingOf(book.entity.id) - book.usufructCharge)),
+          annual: usufructAnnualOf(book.entity.id),
+          carriedForward: book.furnished?.carriedForward ?? 0,
+        }] as const)
+        // L'échéancier reste dans l'état reporté même à zéro : sinon l'exercice suivant
+        // repartirait du prix d'acquisition et amortirait une seconde fois.
+        .filter(([, schedule]) => schedule.annual > 0 || schedule.carriedForward > 0)),
+      treasury: Object.fromEntries(resolvedEntities
+        .filter((entity) => books.has(entity.id))
+        .map((entity) => [entity.id, entity.metrics.treasury ?? 0])),
+      cca: Object.fromEntries(resolvedEntities
+        .filter((entity) => books.has(entity.id))
+        .map((entity) => [entity.id, entity.metrics.ccaBalance ?? 0])),
+      perCeiling: primaryPerson && per.unusedCeiling > 0 ? { [primaryPerson.id]: per.unusedCeiling } : {},
+      mecenat: Object.fromEntries([...books.values()]
+        .filter((book) => (book.mecenat?.carriedForward ?? 0) > 0)
+        .map((book) => [book.entity.id, book.mecenat!.carriedForward])),
+      charasse: charasseStates,
+    },
   };
 }
 

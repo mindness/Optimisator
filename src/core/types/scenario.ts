@@ -5,7 +5,7 @@ import { flowCategorySchema, flowEdgeDataSchema, type FlowCategory, type FlowEdg
 import { flowLayerSchema, type FlowLayer } from './layer';
 
 /** External tax parameter with mandatory provenance (design spec §3.0). */
-export type SourcedRateUnit = 'ratio' | 'eur' | 'pct_points';
+export type SourcedRateUnit = 'ratio' | 'eur' | 'pct_points' | 'years' | 'year';
 
 export type SourcedRateStatus = 'verified' | 'assumed' | 'placeholder';
 
@@ -21,7 +21,7 @@ export interface SourcedRate<TValue = number> {
   status: SourcedRateStatus;
 }
 
-export const sourcedRateUnitSchema = z.enum(['ratio', 'eur', 'pct_points']);
+export const sourcedRateUnitSchema = z.enum(['ratio', 'eur', 'pct_points', 'years', 'year']);
 
 export const sourcedRateStatusSchema = z.enum(['verified', 'assumed', 'placeholder']);
 
@@ -90,9 +90,30 @@ export interface ScenarioState {
   presetId?: string;
   nodePositions?: Record<string, { x: number; y: number }>;
   /** Directed legal relationships, never monetary flows. Unspecified owners remain unknown. */
-  ownerships?: Array<{ id: string; ownerId: string; companyId: string; percent: number }>;
+  ownerships?: Array<{
+    id: string;
+    ownerId: string;
+    companyId: string;
+    percent: number;
+    /** Nature de la détention : une part n'est plus un pourcentage plat (CGI art. 669). */
+    nature?: 'pleine_propriete' | 'usufruit' | 'nue_propriete';
+    /** Usufruit temporaire : durée fixe en années (art. 669, II). */
+    dureeAnnees?: number;
+    /** Âge de l'usufruitier pour un usufruit viager (art. 669, I). */
+    ageUsufruitier?: number;
+    /** Prix payé pour le droit démembré : base d'amortissement chez un usufruitier à l'IS. */
+    acquisitionPrice?: number;
+  }>;
   /** Options fiscales exercées par le groupe (conventions activées). */
-  options?: { integrationFiscale?: boolean };
+  options?: {
+    integrationFiscale?: boolean;
+    /**
+     * Durée du premier exercice en jours (365 par défaut). Un exercice écourté
+     * ne donne droit qu'à une fraction du plafond de 42 500 € du taux réduit
+     * d'IS (CGI art. 219, I-b).
+     */
+    exerciseDays?: number;
+  };
 }
 
 export const scenarioStateSchema = z.object({
@@ -107,8 +128,20 @@ export const scenarioStateSchema = z.object({
   updatedAt: z.string().min(1),
   presetId: z.string().optional(),
   nodePositions: z.record(z.string(), z.object({ x: z.number(), y: z.number() })).optional(),
-  ownerships: z.array(z.object({ id: z.string().min(1), ownerId: z.string().min(1), companyId: z.string().min(1), percent: z.number().positive().max(100) })).optional(),
-  options: z.object({ integrationFiscale: z.boolean().optional() }).optional(),
+  ownerships: z.array(z.object({
+    id: z.string().min(1),
+    ownerId: z.string().min(1),
+    companyId: z.string().min(1),
+    percent: z.number().positive().max(100),
+    nature: z.enum(['pleine_propriete', 'usufruit', 'nue_propriete']).optional(),
+    dureeAnnees: z.number().positive().optional(),
+    ageUsufruitier: z.number().min(0).optional(),
+    acquisitionPrice: z.number().min(0).optional(),
+  })).optional(),
+  options: z.object({
+    integrationFiscale: z.boolean().optional(),
+    exerciseDays: z.number().int().positive().max(365).optional(),
+  }).optional(),
 });
 
 export function parseScenarioState(data: unknown): ScenarioState {

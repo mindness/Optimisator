@@ -53,8 +53,12 @@ describe('FlowCategory union', () => {
       'cca_reimbursement',
       'loan_payment',
       'capital_contribution',
+      'share_sale',
+      'share_contribution',
+      'donation',
+      'property_sale',
     ]);
-    expect(FLOW_CATEGORIES).toHaveLength(13);
+    expect(FLOW_CATEGORIES).toHaveLength(17);
   });
 });
 

@@ -452,6 +452,8 @@ export default function App() {
                       )}
                       marginalRate={summary.personalIncomeTax.marginalRate}
                       appliedDividendMode={summary.dividendTaxMode}
+                      dividendArbitrage={summary.dividendArbitrage}
+                      maxTaxableSalaryAtTmi={summary.maxTaxableSalaryAtTmi}
                       onChange={simulation.setWhatIf}
                       onReset={simulation.resetWhatIf}
                     />

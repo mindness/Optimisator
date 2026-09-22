@@ -21,6 +21,7 @@ const TIMELINE_LABELS = [
   'Intra-groupe',
   'Impôts',
   'Dividendes',
+  'Patrimoine',
 ] as const;
 
 function euros(n: number): number {
@@ -28,11 +29,11 @@ function euros(n: number): number {
 }
 
 describe('getTimelineSteps', () => {
-  it('returns exactly 6 steps in design order', () => {
+  it('returns exactly 7 steps in design order', () => {
     const steps = getTimelineSteps(FREELANCE_SASU_PRESET);
 
-    expect(steps).toHaveLength(6);
-    expect(steps.map((s) => s.order)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(steps).toHaveLength(7);
+    expect(steps.map((s) => s.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(steps.map((s) => s.label)).toEqual([...TIMELINE_LABELS]);
     expect(steps.map((s) => s.id)).toEqual([
       'facturation',
@@ -41,6 +42,7 @@ describe('getTimelineSteps', () => {
       'intra_groupe',
       'impots',
       'dividendes',
+      'patrimoine',
     ]);
   });
 
@@ -185,7 +187,7 @@ describe('structure presets', () => {
       const resolved = resolveScenarioGraph(preset, {});
       expect(resolved.scenarioId).toBe(preset.id);
       expect(resolved.flows.length).toBeGreaterThan(0);
-      expect(resolved.timelineOrder).toHaveLength(6);
+      expect(resolved.timelineOrder).toHaveLength(7);
     }
   });
 });

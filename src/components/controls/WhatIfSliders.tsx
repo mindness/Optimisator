@@ -2,8 +2,8 @@ import type { CSSProperties } from 'react';
 
 import { annotate } from '@/components/common/Glossary';
 import { EditableAmount } from '@/components/common/EditableAmount';
-import { formatPercent, MetricBadge } from '@/components/common/MetricBadge';
-import { PFU_TOTAL_RATE, type WhatIfInputs } from '@/core/engine';
+import { formatEuro, formatPercent, MetricBadge } from '@/components/common/MetricBadge';
+import { PFU_TOTAL_RATE, type DividendArbitrage, type WhatIfInputs } from '@/core/engine';
 
 /** Libellé tiré du taux du moteur : l'interface ne peut pas afficher un autre PFU que celui calculé. */
 const PFU_LABEL = `PFU ${formatPercent(PFU_TOTAL_RATE.value, 1)}`;
@@ -18,6 +18,10 @@ export type WhatIfSlidersProps = {
   marginalRate?: number;
   /** Régime effectivement retenu pour les dividendes (utile en mode auto). */
   appliedDividendMode?: 'pfu' | 'bareme';
+  /** Impôt comparé PFU / barème sur les dividendes perçus par la personne physique. */
+  dividendArbitrage?: DividendArbitrage;
+  /** Rémunération imposable maximale avant la tranche suivante (`Infinity` à 45 %). */
+  maxTaxableSalaryAtTmi?: number;
   onChange: (patch: Partial<WhatIfInputs>) => void;
   onReset?: () => void;
   className?: string;
@@ -102,6 +106,8 @@ export function WhatIfSliders({
   hasSci = false,
   marginalRate,
   appliedDividendMode,
+  dividendArbitrage,
+  maxTaxableSalaryAtTmi,
   onChange,
   onReset,
   className = '',
@@ -211,6 +217,61 @@ export function WhatIfSliders({
           />
         </div>
 
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor="what-if-other-income" className="text-xs font-medium text-fg">
+            Autres revenus imposables du foyer
+          </label>
+          <input
+            id="what-if-other-income"
+            type="number"
+            min={0}
+            step={1_000}
+            value={values.otherIncome ?? 0}
+            onChange={(e) => onChange({ otherIncome: Math.max(0, Number(e.target.value)) })}
+            className="field field-sm font-amount w-28 text-right"
+          />
+        </div>
+        <p className="panel-help">
+          Salaire du conjoint, autre activité, pensions : ces revenus occupent le bas du barème et
+          remontent la tranche appliquée à ce schéma.
+        </p>
+
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor="what-if-dependents" className="text-xs font-medium text-fg">
+            Personnes à charge
+          </label>
+          <input
+            id="what-if-dependents"
+            type="number"
+            min={0}
+            max={10}
+            step={1}
+            value={values.dependents ?? 0}
+            onChange={(e) => onChange({ dependents: Math.max(0, Math.round(Number(e.target.value))) })}
+            className="field field-sm font-amount w-16 text-right"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor="what-if-per" className="text-xs font-medium text-fg">
+            Versement PER annuel
+          </label>
+          <input
+            id="what-if-per"
+            type="number"
+            min={0}
+            step={1_000}
+            value={values.perContribution ?? 0}
+            onChange={(e) => onChange({ perContribution: Math.max(0, Number(e.target.value)) })}
+            className="field field-sm font-amount w-28 text-right"
+          />
+        </div>
+        <p className="panel-help">
+          Déductible du revenu global, plafonné à 10 % des revenus d’activité retenus dans la limite
+          de huit PASS (CGI art. 163 quatervicies). Les personnes à charge allègent la contribution
+          différentielle des hauts revenus (art. 224).
+        </p>
+
         <div className="flex flex-col gap-1">
           <label htmlFor="what-if-dividend-mode" className="text-xs font-medium text-fg">
             Imposition des dividendes
@@ -233,10 +294,29 @@ export function WhatIfSliders({
           <MetricBadge amount={marginalRate} label="Tranche marginale du foyer" unit="percent" tone="neutral" />
         ) : null}
 
+        {dividendArbitrage && dividendArbitrage.pfu.grossDividend > 0 ? (
+          <p className="panel-help" data-testid="dividend-arbitrage">
+            {PFU_LABEL} : <span className="font-amount">{formatEuro(dividendArbitrage.pfu.totalTax)}</span>
+            {' · '}Barème : <span className="font-amount">{formatEuro(dividendArbitrage.bareme.totalTax)}</span>
+            {' — '}le {dividendArbitrage.best.mode === 'pfu' ? PFU_LABEL : 'barème'} économise{' '}
+            <span className="font-amount">{formatEuro(dividendArbitrage.gain)}</span>.
+          </p>
+        ) : null}
+
         {appliedDividendMode && (values.dividendTaxMode ?? 'auto') === 'auto' ? (
           <p className="panel-help">
             Régime retenu : {appliedDividendMode === 'pfu' ? PFU_LABEL : 'barème (option globale)'}.
             L’option barème engage tous les revenus de capitaux mobiliers du foyer.
+          </p>
+        ) : null}
+
+        {maxTaxableSalaryAtTmi !== undefined && marginalRate !== undefined ? (
+          <p className="panel-help" data-testid="tmi-salary-ceiling">
+            {Number.isFinite(maxTaxableSalaryAtTmi)
+              ? <>Rémunération imposable maximale à {formatPercent(marginalRate)} de TMI :{' '}
+                  <span className="font-amount">{formatEuro(maxTaxableSalaryAtTmi)}</span> — au-delà,
+                  l’euro suivant passe dans la tranche supérieure.</>
+              : <>Tranche la plus haute atteinte : aucun plafond au-delà duquel la TMI augmente encore.</>}
           </p>
         ) : null}
       </fieldset>

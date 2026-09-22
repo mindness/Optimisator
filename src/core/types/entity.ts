@@ -44,7 +44,7 @@ export const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   eurl: 'EURL (gérant TNS)',
   sarl: 'SARL (gérant majoritaire TNS)',
   holding_sas: 'Holding (SAS)',
-  holding_sarl: 'Holding (SARL)',
+  holding_sarl: 'Holding (SARL / EURL)',
   sci_is: 'SCI à l’IS',
   sci_ir: 'SCI à l’IR',
   micro_entreprise: 'Micro-entreprise',
@@ -138,7 +138,23 @@ export interface EntityMetrics {
   netPersonalCash?: number;
   /** Cents after personal income tax on salary (barème, 1 part). */
   personalIncomeTax?: number;
+  /** Tranche marginale d'imposition du foyer de cette personne (0 → 0,45). */
+  marginalRate?: number;
   ccaBalance?: number;
+  /** Stock de déficit reportable à la clôture (CGI art. 209, I / art. 156). */
+  deficitCarryForward?: number;
+  /** Capital restant dû des emprunts de l'entité à la clôture. */
+  debtOutstanding?: number;
+  /** IFI dû par cette personne physique (CGI art. 964 à 977). */
+  ifiDue?: number;
+  /** TVA déductible de l'exercice : nulle pour une holding pure (coefficient de déduction). */
+  vatDeductible?: number;
+  /** Taxe de 20 % sur les actifs non professionnels (CGI art. 235 ter C). */
+  holdingAssetTax?: number;
+  /** Réduction d'impôt au titre du mécénat (CGI art. 238 bis). */
+  mecenatReduction?: number;
+  /** Contribution différentielle sur les hauts revenus (CGI art. 224). */
+  cdhrDue?: number;
 }
 
 export const entityMetricsSchema = z.object({
@@ -148,7 +164,15 @@ export const entityMetricsSchema = z.object({
   netProfit: z.number().optional(),
   netPersonalCash: z.number().optional(),
   personalIncomeTax: z.number().optional(),
+  marginalRate: z.number().optional(),
   ccaBalance: z.number().optional(),
+  deficitCarryForward: z.number().optional(),
+  debtOutstanding: z.number().optional(),
+  ifiDue: z.number().optional(),
+  vatDeductible: z.number().optional(),
+  holdingAssetTax: z.number().optional(),
+  mecenatReduction: z.number().optional(),
+  cdhrDue: z.number().optional(),
 });
 
 /** React Flow node payload for a financial entity. */
@@ -167,8 +191,19 @@ export interface EntityNodeData {
   socialRegime?: SocialRegime;
   /** Catégorie micro, pertinente pour `micro_entreprise` uniquement. */
   microCategory?: MicroCategoryId;
-  /** Options exercées par l'entité (micro : versement libératoire, ACRE ; TVA : franchise en base). */
-  options?: { versementLiberatoire?: boolean; acre?: boolean; franchiseTva?: boolean };
+  /**
+   * Options exercées par l'entité (micro : versement libératoire, ACRE ; TVA :
+   * franchise en base ; holding : animation ; meublé : régime réel).
+   */
+  options?: {
+    versementLiberatoire?: boolean;
+    acre?: boolean;
+    franchiseTva?: boolean;
+    /** Holding animatrice : statut revendiqué, jamais présumé (voir ANIMATRICE_EVIDENCE). */
+    animatrice?: boolean;
+    /** Location meublée au réel (LMNP / LMP) : amortissement plafonné art. 39 C, II. */
+    locationMeubleeReelle?: boolean;
+  };
   legalNoteIds?: string[];
   warnings?: string[];
 }
@@ -183,7 +218,13 @@ export const entityNodeDataSchema = z.object({
   taxRegime: taxRegimeSchema.optional(),
   socialRegime: socialRegimeSchema.optional(),
   microCategory: microCategorySchema.optional(),
-  options: z.object({ versementLiberatoire: z.boolean().optional(), acre: z.boolean().optional(), franchiseTva: z.boolean().optional() }).optional(),
+  options: z.object({
+    versementLiberatoire: z.boolean().optional(),
+    acre: z.boolean().optional(),
+    franchiseTva: z.boolean().optional(),
+    animatrice: z.boolean().optional(),
+    locationMeubleeReelle: z.boolean().optional(),
+  }).optional(),
   legalNoteIds: z.array(z.string()).optional(),
   warnings: z.array(z.string()).optional(),
 });

@@ -7,7 +7,8 @@ export type TimelineStepId =
   | 'remuneration'
   | 'intra_groupe'
   | 'impots'
-  | 'dividendes';
+  | 'dividendes'
+  | 'patrimoine';
 
 export interface TimelineStep {
   id: TimelineStepId;
@@ -60,6 +61,13 @@ export const TIMELINE_STEPS: readonly TimelineStep[] = [
     label: 'Dividendes',
     description: 'Dividendes / réserves (mère-fille ou Flat Tax)',
     categories: ['dividend'],
+  },
+  {
+    id: 'patrimoine',
+    order: 7,
+    label: 'Patrimoine',
+    description: 'Cessions de titres et d’immeubles, apport en report, donation',
+    categories: ['share_sale', 'share_contribution', 'donation', 'property_sale'],
   },
 ] as const;
 

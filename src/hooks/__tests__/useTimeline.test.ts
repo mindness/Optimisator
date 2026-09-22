@@ -56,7 +56,7 @@ describe('useTimeline', () => {
     const { result } = renderHook(() => useTimeline(FREELANCE_SASU_PRESET));
     const steps = getTimelineSteps(FREELANCE_SASU_PRESET);
 
-    expect(result.current.steps).toHaveLength(6);
+    expect(result.current.steps).toHaveLength(7);
     expect(result.current.stepIndex).toBe(0);
     expect(result.current.currentStep.id).toBe('facturation');
     expect(result.current.playing).toBe(false);
@@ -105,12 +105,12 @@ describe('useTimeline', () => {
     act(() => {
       result.current.jump(99);
     });
-    expect(result.current.stepIndex).toBe(5);
+    expect(result.current.stepIndex).toBe(6);
 
     act(() => {
       result.current.next();
     });
-    expect(result.current.stepIndex).toBe(5);
+    expect(result.current.stepIndex).toBe(6);
   });
 
   it('jumpToId selects a step by id', () => {
@@ -157,9 +157,9 @@ describe('useTimeline', () => {
     expect(result.current.stepIndex).toBe(1);
 
     act(() => {
-      vi.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(5000);
     });
-    expect(result.current.stepIndex).toBe(5);
+    expect(result.current.stepIndex).toBe(6);
     expect(result.current.playing).toBe(false);
 
     act(() => {

@@ -1,6 +1,17 @@
 import { z } from 'zod';
-import { ENTITY_TYPE_LABELS, scenarioStateSchema, type ScenarioState, type EntityType, type EntityNodeData, type FlowCategory, type FlowEdgeData } from './types';
-import { calculateCorporateTax, calculateFlatTax, calculateMotherDaughterDividend, MOTHER_DAUGHTER_MIN_HOLDING_PCT, type WhatIfInputs } from './engine';
+import { DEFAULT_TAX_REGIME, ENTITY_TYPE_LABELS, scenarioStateSchema, type ScenarioState, type EntityType, type EntityNodeData, type FlowCategory, type FlowEdgeData } from './types';
+import {
+  calculateCorporateTax,
+  calculateFlatTax,
+  calculateMotherDaughterDividend,
+  MOTHER_DAUGHTER_MIN_HOLDING_PCT,
+  PARTICIPATION_QPFC_RATE,
+  REPORT_REINVESTMENT_HOLDING_YEARS,
+  REPORT_REINVESTMENT_QUOTA,
+  REPORT_REINVESTMENT_WINDOW_YEARS,
+  REPORT_SALE_WINDOW_YEARS,
+  type WhatIfInputs,
+} from './engine';
 
 /** `crypto.randomUUID` n'existe qu'en contexte sécurisé (HTTPS/localhost) : repli sur getRandomValues. */
 export function newId(): string {
@@ -12,23 +23,27 @@ export function newId(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-const OPCO_FIELDS = ['caHt', 'expensesHt', 'capital', 'openingTreasury', 'openingCca'] as const;
+const OPCO_FIELDS = ['caHt', 'expensesHt', 'capital', 'openingTreasury', 'openingCca', 'donations'] as const;
 
 /** Paramètres saisis par type d'entité — source unique pour l'accordéon et les cartes du canevas. */
 export const ENTITY_INPUT_FIELDS: Partial<Record<EntityType, readonly string[]>> = {
   sasu: OPCO_FIELDS, eurl: OPCO_FIELDS, sarl: OPCO_FIELDS,
   micro_entreprise: ['caHt', 'expensesHt', 'openingTreasury'],
   entreprise_individuelle: ['caHt', 'expensesHt', 'openingTreasury'],
-  holding_sas: ['capital', 'openingTreasury', 'openingCca'],
-  holding_sarl: ['capital', 'openingTreasury', 'openingCca'],
-  sci_is: ['rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
-  sci_ir: ['rentalIncomeHt', 'interestExpenses', 'otherCharges', 'capital', 'openingTreasury', 'openingCca'],
+  holding_sas: ['capital', 'openingTreasury', 'openingCca', 'realEstateValue', 'totalAssets', 'nonProfessionalAssets', 'donations'],
+  holding_sarl: ['capital', 'openingTreasury', 'openingCca', 'realEstateValue', 'totalAssets', 'nonProfessionalAssets', 'donations'],
+  sci_is: ['rentalIncomeHt', 'interestExpenses', 'buildingAmortization', 'otherCharges', 'realEstateValue', 'capital', 'openingTreasury', 'openingCca'],
+  sci_ir: ['rentalIncomeHt', 'interestExpenses', 'otherCharges', 'realEstateValue', 'capital', 'openingTreasury', 'openingCca'],
 };
 
 export const ENTITY_INPUT_FIELD_LABELS: Record<string, string> = {
   caHt: 'CA HT annuel', expensesHt: 'Charges HT annuelles', rentalIncomeHt: 'Loyers HT annuels', interestExpenses: 'Intérêts d’emprunt annuels',
   buildingAmortization: 'Amortissement annuel', otherCharges: 'Autres charges annuelles', capital: 'Capital libéré',
   openingTreasury: 'Trésorerie d’ouverture', openingCca: 'Compte courant d’associé d’ouverture',
+  realEstateValue: 'Valeur des biens immobiliers (assiette IFI)',
+  totalAssets: 'Valeur vénale des actifs détenus (taxe holdings)',
+  nonProfessionalAssets: 'dont actifs non professionnels (taxe holdings)',
+  donations: 'Versements de mécénat',
 };
 
 export const WORKSPACE_KEY = 'optimisator.workspace.v1';
@@ -156,6 +171,11 @@ export const FLOW_ROUTES: Partial<Record<FlowCategory, string[]>> = {
   cca_reimbursement: [...pairs(COMPANIES, ['person']), ...pairs(COMPANIES, COMPANIES)],
   loan_payment: pairs(COMPANIES, ['bank']),
   capital_contribution: [...pairs(['person'], COMPANIES), ...pairs(['holding_sas', 'holding_sarl'], COMPANIES)],
+  // Titres, pas trésorerie : la source est le cédant / l'apporteur / le donateur.
+  share_sale: pairs(['person', ...COMPANIES], ['person', ...COMPANIES]),
+  share_contribution: pairs(['person'], ['holding_sas', 'holding_sarl']),
+  donation: pairs(['person'], ['person']),
+  property_sale: pairs(['person', ...COMPANIES], ['person', ...COMPANIES]),
 };
 
 /** Mouvements de trésorerie : plusieurs flux par source acceptés. */
@@ -173,12 +193,15 @@ const CATEGORY_LAYER: Partial<Record<FlowCategory, FlowEdgeData['layer']>> = {
   revenue: 'treasury', expense: 'treasury', rent: 'treasury', management_fees: 'treasury',
   cca_advance: 'treasury', cca_reimbursement: 'treasury', loan_payment: 'treasury', capital_contribution: 'legal',
   salary: 'social', social_charges: 'social', vat: 'vat', is_tax: 'tax', dividend: 'tax',
+  share_sale: 'tax', share_contribution: 'legal', donation: 'legal', property_sale: 'tax',
 };
 const CATEGORY_LABEL: Partial<Record<FlowCategory, string>> = {
   revenue: 'Chiffre d’affaires', expense: 'Charges', salary: 'Rémunération', social_charges: 'Cotisations URSSAF',
   vat: 'TVA nette', is_tax: 'Impôt sur les sociétés', rent: 'Loyer', dividend: 'Dividendes',
   management_fees: 'Management fees', cca_advance: 'Apport en compte courant',
   cca_reimbursement: 'Remboursement de compte courant', loan_payment: 'Échéance d’emprunt', capital_contribution: 'Apport en capital',
+  share_sale: 'Cession de titres', share_contribution: 'Apport de titres (report 150-0 B ter)', donation: 'Donation de titres',
+  property_sale: 'Cession immobilière',
 };
 
 /**
@@ -227,6 +250,27 @@ export function adviseFlow(
     advice.rate = calculateCorporateTax(probe, true).taxDue / probe;
     advice.tax = calculateCorporateTax(amount, true).taxDue;
     advice.warning = 'Prestations réelles, convention écrite et prix de marché exigés : sinon acte anormal de gestion.';
+    return advice;
+  }
+  if (category === 'share_contribution') {
+    advice.regime = 'Apport-cession : report d’imposition (CGI art. 150-0 B ter)';
+    advice.warning = `Cession des titres apportés sous ${REPORT_SALE_WINDOW_YEARS.value} ans : remploi d’au moins ${REPORT_REINVESTMENT_QUOTA.value * 100} % du prix dans les ${REPORT_REINVESTMENT_WINDOW_YEARS.value} ans, conservé ${REPORT_REINVESTMENT_HOLDING_YEARS.value} ans. La gestion de son propre patrimoine immobilier est exclue du remploi éligible : un OBO immobilier adossé au report ne tient pas au-delà de la poche libre de ${Math.round((1 - REPORT_REINVESTMENT_QUOTA.value) * 100)} %.`;
+    return advice;
+  }
+  if (category === 'share_sale') {
+    const person = source.entityType === 'person';
+    advice.regime = person
+      ? 'Plus-value de cession de titres (CGI art. 150-0 A) : PFU ou barème sur option globale'
+      : 'Titres de participation (CGI art. 219, I-a quinquies) : exonération sous quote-part de frais et charges de 12 %';
+    advice.rate = person ? calculateFlatTax(probe).totalTax / probe : PARTICIPATION_QPFC_RATE.value;
+    advice.warning = person
+      ? 'Les abattements pour durée de détention ne visent que les titres acquis avant 2018, et seulement sur option barème.'
+      : 'Régime de participation soumis à une détention d’au moins 5 % depuis 2 ans : renseignez la quote-part cédée et l’année d’acquisition.';
+    return advice;
+  }
+  if (category === 'donation') {
+    advice.regime = 'Donation en ligne directe : abattement 100 000 € par parent et par enfant, renouvelable 15 ans';
+    advice.warning = 'Pacte Dutreil : exonération de 75 % subordonnée à un engagement collectif de 2 ans, un engagement individuel de 6 ans et une fonction de direction — conditions à vérifier, jamais supposées.';
     return advice;
   }
   if (category !== 'dividend' || !FLOW_ROUTES.dividend!.includes(route)) return advice;
@@ -278,6 +322,10 @@ export function simulationIssues(scenario: ScenarioState): string[] {
     seen.add(key);
   }
   for (const entity of scenario.entities) {
+    // La location meublée est commerciale par nature : une SCI à l'IR bascule à l'IS (CGI art. 206, 2).
+    if (entity.options?.locationMeubleeReelle && entity.entityType === 'sci_ir') {
+      issues.push(`${entity.label} : location meublée dans une SCI à l’IR — activité commerciale par nature, la société bascule à l’IS. Passez le régime à l’IS.`);
+    }
     if (OPERATING.includes(entity.entityType)) {
       const revenue = scenario.flows.find((flow) => flow.category === 'revenue' && flow.targetId === entity.id);
       const expense = scenario.flows.find((flow) => flow.category === 'expense' && flow.sourceId === entity.id);
@@ -363,6 +411,51 @@ export function completeScenario(scenario: ScenarioState): ScenarioState {
     }
   }
   return { ...scenario, entities, flows };
+}
+
+/**
+ * Flux subis, déduits du schéma lui-même : une vente appelle la TVA, une
+ * rémunération appelle les cotisations, un bénéfice à l'IS appelle l'impôt.
+ * Ils sont créés à zéro — le moteur les chiffre à partir des taux vérifiés,
+ * l'utilisateur n'a jamais à les saisir. Les trajets autorisés viennent de
+ * `FLOW_ROUTES` : aucune liste de types n'est réécrite ici.
+ */
+export function autoCompanionFlows(scenario: ScenarioState): ScenarioState {
+  const entities = [...scenario.entities];
+  const flows = [...scenario.flows];
+  const ensureEntity = (entityType: EntityType, label: string): EntityNodeData => {
+    let found = entities.find((entity) => entity.entityType === entityType);
+    if (!found) { found = { id: newId(), label, entityType }; entities.push(found); }
+    return found;
+  };
+  const routed = (category: FlowCategory, from: EntityType, to: EntityType) =>
+    FLOW_ROUTES[category]?.includes(`${from}:${to}`) ?? false;
+  const ensureFlow = (category: FlowCategory, company: EntityNodeData, toType: EntityType, toLabel: string, label: string) => {
+    if (!routed(category, company.entityType, toType)) return;
+    if (flows.some((flow) => flow.category === category && flow.sourceId === company.id)) return;
+    const other = ensureEntity(toType, toLabel);
+    flows.push({
+      id: newId(), category, label: `${label} — ${company.label}`, amount: 0, periodicity: 'annual',
+      layer: CATEGORY_LAYER[category] ?? 'treasury', sourceId: company.id, targetId: other.id,
+    });
+  };
+
+  for (const company of scenario.entities) {
+    if (!COMPANIES.includes(company.entityType)) continue;
+    const sells = flows.some((flow) => ['revenue', 'rent', 'management_fees'].includes(flow.category) && flow.targetId === company.id)
+      || (company.inputs?.caHt ?? company.inputs?.rentalIncomeHt ?? 0) > 0;
+    const buys = flows.some((flow) => flow.category === 'expense' && flow.sourceId === company.id)
+      || (company.inputs?.expensesHt ?? 0) > 0;
+    const pays = flows.some((flow) => flow.category === 'salary' && flow.sourceId === company.id);
+    // Franchise en base : pas de TVA facturée ni déductible, donc pas de flux TVA.
+    const franchise = company.options?.franchiseTva ?? company.entityType === 'micro_entreprise';
+    if ((sells || buys) && !franchise) ensureFlow('vat', company, 'tax_authority', 'Trésor public', 'TVA nette');
+    if (pays) ensureFlow('social_charges', company, 'urssaf', 'URSSAF', 'Cotisations URSSAF');
+    // Une société à l'IS liquide son impôt même à zéro : le flux porte le calcul.
+    const regime = company.taxRegime ?? DEFAULT_TAX_REGIME[company.entityType];
+    if (regime === 'is' && (sells || buys || pays)) ensureFlow('is_tax', company, 'tax_authority', 'Trésor public', 'Impôt sur les sociétés');
+  }
+  return flows.length === scenario.flows.length ? scenario : { ...scenario, entities, flows };
 }
 
 export function saveWorkspace(storage: Pick<Storage, 'setItem'>, workspace: Workspace): void {

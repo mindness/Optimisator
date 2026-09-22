@@ -194,6 +194,9 @@ export type FlowCanvasProps = {
   /** Renommage au double-clic sur le titre d'une carte — atelier Architecture uniquement. */
   onRenameEntity?: (id: string, label: string) => void;
   showOwnership?: boolean;
+  /** Élément à passer en plein écran — par défaut le canvas seul. L'atelier y met la grille
+   *  palette + schéma pour garder les briques à portée de main une fois en grand. */
+  fullscreenTarget?: React.RefObject<HTMLElement | null>;
 };
 
 /** Type MIME du glisser-déposer palette → canvas. */
@@ -234,6 +237,7 @@ function FlowCanvasInner({
   onPatchEntityInputs,
   onRenameEntity,
   showOwnership = true,
+  fullscreenTarget,
 }: FlowCanvasProps) {
   const { screenToFlowPosition, fitView } = useReactFlow();
   const entities = entitiesProp ?? scenario.entities;
@@ -244,10 +248,11 @@ function FlowCanvasInner({
   const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
-    const sync = () => setFullscreen(document.fullscreenElement === shell.current);
+    const target = () => fullscreenTarget?.current ?? shell.current;
+    const sync = () => setFullscreen(document.fullscreenElement === target());
     document.addEventListener('fullscreenchange', sync);
     return () => document.removeEventListener('fullscreenchange', sync);
-  }, []);
+  }, [fullscreenTarget]);
 
   const initialNodes = useMemo(() => layoutPresetNodes(entities, scenario.flows, rankdir), [entities, scenario.flows, rankdir]);
   const initialEdges = useMemo(
@@ -357,7 +362,7 @@ function FlowCanvasInner({
           title={fullscreen ? 'Quitter le plein écran' : 'Plein écran'}
           onClick={() => {
             if (fullscreen) void document.exitFullscreen();
-            else void shell.current?.requestFullscreen();
+            else void (fullscreenTarget?.current ?? shell.current)?.requestFullscreen();
           }}
         >
           <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

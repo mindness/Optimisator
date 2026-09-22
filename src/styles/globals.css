@@ -516,3 +516,9 @@ input[type="range"]::-moz-range-thumb {
     transition: none;
   }
 }
+
+/* Plein écran de l'atelier : l'élément promu perd son flex parent, on lui rend la hauteur. */
+.workbench:fullscreen {
+  height: 100%;
+  overflow: auto;
+}
