@@ -11,7 +11,7 @@ import type { FlowCategory, ScenarioState } from '@/core/types';
 export type UseTimelineOptions = {
   /** Auto-advance interval while playing (ms). Default 1600. */
   intervalMs?: number;
-  /** Initial step index (clamped). Default 0. */
+  /** Initial step index (clamped). Default: dernière étape (schéma complet). */
   initialIndex?: number;
 };
 
@@ -47,8 +47,10 @@ export function useTimeline(
 ): UseTimelineResult {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS;
   const steps = useMemo(() => getTimelineSteps(scenario), [scenario]);
+  // On atterrit sur la dernière étape : le schéma complet est visible d'emblée.
+  // ▶ rejoue depuis le début (play() revient à 0 quand on est en fin de piste).
   const [rawIndex, setStepIndex] = useState(() =>
-    clampIndex(options.initialIndex ?? 0, steps.length),
+    clampIndex(options.initialIndex ?? steps.length - 1, steps.length),
   );
   const [rawPlaying, setPlaying] = useState(false);
 
@@ -57,7 +59,7 @@ export function useTimeline(
   const [seenScenarioId, setSeenScenarioId] = useState(scenario.id);
   if (seenScenarioId !== scenario.id) {
     setSeenScenarioId(scenario.id);
-    setStepIndex(0);
+    setStepIndex(steps.length - 1);
     setPlaying(false);
   }
 

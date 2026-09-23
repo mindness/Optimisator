@@ -52,21 +52,21 @@ describe('useTimeline', () => {
     vi.useFakeTimers();
   });
 
-  it('starts at the first step with matching visible categories', () => {
+  it('starts at the last step so the full diagram is visible', () => {
     const { result } = renderHook(() => useTimeline(FREELANCE_SASU_PRESET));
     const steps = getTimelineSteps(FREELANCE_SASU_PRESET);
 
     expect(result.current.steps).toHaveLength(7);
-    expect(result.current.stepIndex).toBe(0);
-    expect(result.current.currentStep.id).toBe('facturation');
+    expect(result.current.stepIndex).toBe(6);
+    expect(result.current.currentStep.id).toBe('patrimoine');
     expect(result.current.playing).toBe(false);
     expect(result.current.visibleCategories).toEqual(
-      categoriesVisibleThrough(steps[0]!.id),
+      categoriesVisibleThrough(steps[6]!.id),
     );
   });
 
   it('next / prev / jump change the active step and visible categories', () => {
-    const { result } = renderHook(() => useTimeline(FREELANCE_SASU_PRESET));
+    const { result } = renderHook(() => useTimeline(FREELANCE_SASU_PRESET, { initialIndex: 0 }));
 
     act(() => {
       result.current.next();
@@ -95,7 +95,7 @@ describe('useTimeline', () => {
   });
 
   it('clamps jump and does not wrap prev at start', () => {
-    const { result } = renderHook(() => useTimeline(FREELANCE_SASU_PRESET));
+    const { result } = renderHook(() => useTimeline(FREELANCE_SASU_PRESET, { initialIndex: 0 }));
 
     act(() => {
       result.current.prev();
@@ -137,7 +137,7 @@ describe('useTimeline', () => {
     expect(result.current.stepIndex).toBe(3);
 
     rerender({ scenario: { ...FREELANCE_SASU_PRESET, id: 'other-id' } });
-    expect(result.current.stepIndex).toBe(0);
+    expect(result.current.stepIndex).toBe(6);
     expect(result.current.playing).toBe(false);
   });
 

@@ -109,12 +109,19 @@ describe('App assembly', () => {
     ).toHaveValue(FREELANCE_SASU_PRESET.id);
   });
 
-  it('switches preset and resets timeline to the first step', () => {
+  it('switches preset and resets timeline to the last step (schema complet)', () => {
     render(<App />);
 
+    // Au chargement on est sur la derniere etape : tous les flux sont visibles.
+    const atLastStep = () => {
+      const bar = within(screen.getByTestId('timeline-bar')).getByRole('progressbar');
+      return bar.getAttribute('aria-valuenow') === bar.getAttribute('aria-valuemax');
+    };
+    expect(atLastStep()).toBe(true);
+
     const timeline = screen.getByTestId('timeline-bar');
-    fireEvent.click(within(timeline).getByRole('button', { name: /Étape suivante|Suiv/i }));
-    expect(within(timeline).getByText(/Étape 2\//i)).toBeInTheDocument();
+    fireEvent.click(within(timeline).getAllByRole('button')[0]!); // etape precedente
+    expect(atLastStep()).toBe(false);
 
     const select = screen.getByTestId('preset-select');
     fireEvent.change(select, { target: { value: SASU_HOLDING_PRESET.id } });
@@ -124,7 +131,7 @@ describe('App assembly', () => {
       'data-preset',
       'sasu-holding',
     );
-    expect(within(timeline).getByText(/Étape 1\//i)).toBeInTheDocument();
+    expect(atLastStep()).toBe(true);
   });
 
   it('advances timeline via step jump buttons', () => {
