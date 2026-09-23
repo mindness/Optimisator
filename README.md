@@ -94,7 +94,12 @@ nominatives.
 - **Previews par PR** : branchez le dépôt dans Cloudflare Pages (build `npm run build`, sortie `dist`) —
   chaque PR obtient son URL de preview, sans workflow à maintenir.
 - **Pages légales** : `/legal` (mentions, CGU, confidentialité). **Renseignez `LEGAL_IDENTITY` dans
-  `src/components/common/LegalPage.tsx` avant toute mise en ligne** (obligation LCEN art. 6 III).
+  `src/components/common/LegalPage.tsx` avant toute mise en ligne** — LCEN (loi n° 2004-575)
+  **art. 1-1**, où l'obligation a été déplacée depuis l'art. 6 III. En régime `non_professionnel`
+  (projet perso, sans activité commerciale), seuls le **nom et l'adresse de l'hébergeur** sont à
+  publier : le II de l'art. 1-1 permet de garder l'anonymat dès lors que votre identité a été
+  communiquée à l'hébergeur — ce qui est le cas si votre compte est à votre vraie identité. Passez
+  en `professionnel` dès qu'il y a facturation, publicité ou activité commerciale.
 - **Observabilité** (optionnelle, voir `.env.example`) : `VITE_SENTRY_DSN` charge Sentry à la demande,
   `VITE_PLAUSIBLE_SRC` injecte Plausible (sans cookie, donc sans bandeau). Le hash d'URL, qui contient le
   scénario, est retiré avant tout envoi.

@@ -4,19 +4,45 @@ import { DisclaimerBanner } from './DisclaimerBanner';
 import { RATES_OLDEST_SOURCE, RATES_VERIFIED_ON, formatRatesDate } from '@/core/legal/ratesFreshness';
 
 /**
- * Identité de l'éditeur (LCEN art. 6 III). À compléter avant toute mise en ligne :
- * un champ laissé vide s'affiche « [à compléter] ».
+ * Identité de l'éditeur — LCEN (loi n° 2004-575) **article 1-1**, et non plus
+ * l'article 6 III : l'obligation a été déplacée, l'article 6 s'y réfère
+ * désormais (IV-B).
+ *
+ * Deux régimes :
+ *
+ * - `mode: 'non_professionnel'` (art. 1-1, II) — un particulier qui publie sans
+ *   activité professionnelle « peut ne tenir à la disposition du public, pour
+ *   préserver son anonymat, que le nom […] et l'adresse du fournisseur de
+ *   services d'hébergement, sous réserve d'avoir communiqué à ce fournisseur
+ *   les éléments d'identification personnelle mentionnés au I ». C'est le cas
+ *   dès lors que le compte chez l'hébergeur est ouvert à votre vraie identité.
+ *   Seuls `host` et `hostAddress` sont alors requis.
+ *
+ * - `mode: 'professionnel'` (art. 1-1, I) — dès que l'outil est exploité à
+ *   titre professionnel (facturation, publicité, activité commerciale), il faut
+ *   publier nom, prénoms, domicile et téléphone (ou dénomination, siège et
+ *   numéro RCS/RNE pour une société), le directeur de la publication, et
+ *   l'hébergeur avec son téléphone.
+ *
+ * `hostAddress` : reprendre l'adresse exacte figurant sur les mentions légales
+ * de l'hébergeur retenu (Cloudflare Pages, Netlify, GitHub Pages…), sans la
+ * reconstituer de mémoire.
  */
 export const LEGAL_IDENTITY = {
+  mode: 'non_professionnel' as 'non_professionnel' | 'professionnel',
+  host: '',
+  hostAddress: '',
+  /** Facultatif : une adresse de contact reste utile même sous le régime anonyme. */
+  contactEmail: '',
+  // Régime professionnel uniquement (art. 1-1, I).
   editor: '',
   legalForm: '',
   address: '',
   siren: '',
+  phone: '',
   publicationDirector: '',
-  contactEmail: '',
-  host: '',
-  hostAddress: '',
-} as const;
+  hostPhone: '',
+};
 
 const v = (value: string) => value || '[à compléter]';
 
@@ -45,11 +71,30 @@ export function LegalPage() {
         </header>
 
         <Section id="mentions" title="Mentions légales">
+          {id.mode === 'professionnel' ? (
+            <p className="m-0">
+              Éditeur : {v(id.editor)} — {v(id.legalForm)}, {v(id.address)}. SIREN : {v(id.siren)}.
+              Téléphone : {v(id.phone)}. Directeur de la publication : {v(id.publicationDirector)}.
+              Contact : {v(id.contactEmail)}.
+            </p>
+          ) : (
+            <p className="m-0">
+              Ce service est édité à titre non professionnel par un particulier, qui conserve
+              l’anonymat vis-à-vis du public dans les conditions prévues au II de l’article 1-1 de la
+              loi n° 2004-575 du 21 juin 2004. Ses éléments d’identification ont été communiqués à
+              l’hébergeur ci-dessous, tenu au secret professionnel et devant les transmettre à
+              l’autorité judiciaire qui les demande.
+              {id.contactEmail ? <> Contact : {id.contactEmail}.</> : null}
+            </p>
+          )}
           <p className="m-0">
-            Éditeur : {v(id.editor)} — {v(id.legalForm)}, {v(id.address)}. SIREN : {v(id.siren)}.
-            Directeur de la publication : {v(id.publicationDirector)}. Contact : {v(id.contactEmail)}.
+            Hébergeur : {v(id.host)}, {v(id.hostAddress)}
+            {id.mode === 'professionnel' ? <>, {v(id.hostPhone)}</> : null}.
           </p>
-          <p className="m-0">Hébergeur : {v(id.host)}, {v(id.hostAddress)}.</p>
+          <p className="m-0">
+            Droit de réponse : toute personne nommée ou désignée dans ce service peut l’exercer dans
+            les trois mois, auprès de l’hébergeur ci-dessus (art. 1-1, III de la même loi).
+          </p>
         </Section>
 
         <Section id="cgu" title="Conditions générales d’utilisation">
