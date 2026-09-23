@@ -26,7 +26,8 @@ ALLOWED_ORIGINS = ""
 
 # Quota d'écriture sur POST /api/scenarios, par IP appelante. Sans ce binding
 # (wrangler dev, tests), l'endpoint n'a aucune limite : ne pas le retirer en prod.
-# `period` ne peut valoir que 10 ou 60 secondes.
+# `period` ne peut valoir que 10 ou 60 secondes. Le compteur est local au
+# datacentre qui sert la requête : le quota est permissif, pas comptable.
 [[ratelimits]]
 name = "WRITE_LIMIT"
 namespace_id = "1001"

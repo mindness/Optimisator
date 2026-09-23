@@ -37,3 +37,7 @@ Avant d'exposer le Worker, vérifier deux valeurs dans `wrangler.toml` :
   domaine de la SPA.
 - `[[ratelimits]]` `WRITE_LIMIT` — c'est le seul garde-fou sur une écriture
   ouverte. Le retirer rouvre la base à des insertions illimitées de 256 ko.
+  Le compteur est local au datacentre Cloudflare qui exécute le Worker, donc
+  permissif : le quota réel est « 10 par minute et par IP *et par colo* ». Il
+  arrête un script isolé, pas une source répartie — prévoir une purge par âge
+  si le volume devient un sujet.
