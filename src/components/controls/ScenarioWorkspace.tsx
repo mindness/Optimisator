@@ -212,18 +212,22 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
             <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3" /></svg>
           </button>
         </div>
-        <button className="btn btn-ghost" onClick={reset}>Repartir de zéro</button>
-        <button className={button} onClick={save}>Enregistrer localement</button>
-        <button className={button} onClick={load}>Charger la sauvegarde</button>
-        <ScenarioFileButtons scenario={draft} whatIf={{}} onMessage={setMessage}
-          onImport={(scenario) => { setDraft(scenario); }} />
-        <button className={button} onClick={() => setBaseline(structuredClone(draft))}>Définir comme A</button>
         <button className="btn btn-primary" disabled={!result} onClick={() => onApply({ ...draft, id: newId(), presetId: undefined })}>Ouvrir dans le simulateur</button>
       </header>
       <p role="status" className="m-0 px-3 py-2 text-sm text-fg-muted">{message}</p>
       <div ref={workbench} className="workbench grid min-h-0 flex-1 gap-3 bg-surface p-3 lg:grid-cols-[22rem_1fr]">
         <aside className="space-y-3 lg:overflow-auto">
           <label className="block text-sm">Nom du scénario<input className={control} value={draft.name} onChange={(event) => change({ ...draft, name: event.target.value })} /></label>
+
+          <Section title="Fichier et sauvegarde">
+            <div className="flex flex-wrap gap-2">
+              <button className={button} onClick={save}>Enregistrer localement</button>
+              <button className={button} onClick={load}>Charger la sauvegarde</button>
+              <ScenarioFileButtons scenario={draft} whatIf={{}} onMessage={setMessage}
+                onImport={(scenario) => { setDraft(scenario); }} />
+              <button className="btn btn-ghost" onClick={reset}>Repartir de zéro</button>
+            </div>
+          </Section>
 
           <Section title="Palette" open>
             <p className="m-0 text-xs text-fg-muted">Glissez une brique sur le schéma, ou cliquez pour l’ajouter. Chaque société porte son régime (IS / IR), le statut social de son dirigeant et ses soldes d’ouverture.</p>
@@ -361,6 +365,13 @@ export function ScenarioWorkspace({ initialScenario, whatIf, onApply }: {
             <section aria-label="Comparaison A B">
               <h3 className="font-semibold">A / B — référence et brouillon courant</h3>
               <p className="text-sm text-fg-muted">Recalcul avec le référentiel actuel. Comparaison manuelle, pas recommandation ni recherche automatique d’un optimum.</p>
+              <p className="text-sm text-fg-muted">
+                A est la photo que vous figez ; B est le schéma en cours d’édition.
+                Figez A, modifiez le schéma, et l’écart apparaît ci-dessous.
+              </p>
+              <button className={button} onClick={() => setBaseline(structuredClone(draft))}>
+                Figer ce schéma comme référence A
+              </button>
               {reference && result ? <table className="w-full text-right text-sm"><caption className="text-left">A : {baseline?.name} · B : {draft.name}</caption><thead><tr><th>Indicateur</th><th>A</th><th>B</th><th>Écart B − A</th></tr></thead><tbody>
                 {(['netGroupCash', 'netPersonalCash'] as const).map((key) => <tr key={key}><th className="text-left">{key === 'netGroupCash' ? 'Trésorerie groupe' : 'Personnel avant IR rémunération'}</th><td className="font-amount">{formatEuro(reference.summary[key])}</td><td className="font-amount">{formatEuro(result.summary[key])}</td><td className="font-amount">{formatEuro(result.summary[key] - reference.summary[key])}</td></tr>)}
               </tbody></table> : <p className="text-sm">Définissez une référence A ; les deux scénarios doivent être couverts par le moteur.</p>}

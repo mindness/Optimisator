@@ -69,8 +69,11 @@ export function EntityNodeShell({
 
   return (
     <article
+      // Largeur figée à NODE_WIDTH : dagre place les cartes d'après cette valeur et
+      // fitView recadre d'après leur largeur mesurée — les deux doivent coïncider,
+      // sinon le schéma déborde du cadre au recadrage.
       className={[
-        'card min-w-[13rem] max-w-[17rem] px-3.5 py-3',
+        'card w-[13rem] px-3.5 py-3',
         selected ? 'border-accent ring-2 ring-accent/25' : '',
         className,
       ]

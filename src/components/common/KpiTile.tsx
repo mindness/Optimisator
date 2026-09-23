@@ -45,7 +45,11 @@ export function KpiTile({
             </svg>
             {' '}{fmt(Math.abs(delta))}
           </>
-        ) : 'inchangé'}
+        ) : (
+          // Tant que rien n'a bougé, la ligne d'écart ne dit rien : on garde sa
+          // place (pas de saut de grille au premier curseur) sans l'écrire.
+          ' '
+        )}
       </span>
       <span className="font-amount truncate text-lg font-semibold text-fg">{fmt(value)}</span>
     </div>

@@ -16,8 +16,6 @@ export type FlowEdgePayload = FlowEdgeData & {
   onSelect?: (flow: FlowEdgeData) => void;
   /** Décalage vertical du libellé quand plusieurs flux partagent le même tracé. */
   labelOffset?: number;
-  /** Décalage horizontal quand plusieurs flux partent de la même entité. */
-  labelShift?: number;
   traceHighlight?: boolean;
 } & Record<string, unknown>;
 
@@ -181,10 +179,10 @@ export function FlowEdge({
         {/* Le centrage vit dans le transform inline : les utilitaires translate de Tailwind v4 s'y ajouteraient au lieu de le remplacer. */}
         <button
           type="button"
-          className="nodrag nopan card absolute cursor-pointer px-2 py-1 text-left hover:border-border-strong aria-pressed:border-accent"
+          className="nodrag nopan card absolute w-[7.5rem] cursor-pointer px-2 py-1 text-left hover:border-border-strong aria-pressed:border-accent"
           aria-pressed={selected}
           style={{
-            transform: `translate(-50%, -50%) translate(${labelX + (data?.labelShift ?? 0)}px,${labelY + (data?.labelOffset ?? 0)}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (data?.labelOffset ?? 0)}px)`,
             pointerEvents: 'all',
           }}
           title={data?.label ?? 'Flux'}

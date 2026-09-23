@@ -137,6 +137,16 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         <Row label="TMI atteinte" value={`${Math.round(result.best.marginalRate * 100)} %`} />
       </dl>
 
+      <div>
+        <button
+          type="button"
+          onClick={() => onApply(result.best)}
+          className="btn btn-primary"
+        >
+          Appliquer au simulateur
+        </button>
+      </div>
+
       <figure className="m-0 card p-3">
         <figcaption className="mb-2 text-xs text-fg-muted">
           {OBJECTIVES.find(([id]) => id === objective)?.[1]} selon le salaire net, à{' '}
@@ -240,15 +250,6 @@ export function Optimizer({ scenario, whatIf, onApply }: OptimizerProps) {
         </ul>
       </div>
 
-      <div>
-        <button
-          type="button"
-          onClick={() => onApply(result.best)}
-          className="btn"
-        >
-          Appliquer au simulateur
-        </button>
-      </div>
     </section>
   );
 }

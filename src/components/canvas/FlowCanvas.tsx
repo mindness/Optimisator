@@ -34,9 +34,8 @@ export const NODE_HEIGHT: Partial<Record<EntityNodeData['entityType'], number>> 
 };
 export const DEFAULT_NODE_HEIGHT = 72;
 // Le libellé d'un flux est posé au milieu de l'arête : dagre lui réserve la place comme à un nœud.
-const EDGE_LABEL = { width: 190, height: 68, labelpos: 'c' as const };
-const LABEL_STACK_GAP = 52;
-const LABEL_FAN_SHIFT = 64;
+// Sa largeur doit tenir dans l'espacement entre deux rangs (`ranksep`), sinon il déborde sur les cartes.
+const EDGE_LABEL = { width: 120, height: 84, labelpos: 'c' as const };
 
 function asEntityPayload(entity: EntityNodeData): EntityNodePayload {
   return entity as EntityNodePayload;
@@ -72,7 +71,9 @@ export function layoutPresetNodes(
   // Vertical sur écran étroit : une colonne de cartes lisibles plutôt qu'une frise miniature.
   graph.setGraph(rankdir === 'TB'
     ? { rankdir, nodesep: 24, ranksep: 72, marginx: 16, marginy: 16 }
-    : { rankdir, nodesep: 80, ranksep: 150, marginx: 16, marginy: 16 });
+    // ranksep > largeur du libellé : le libellé tient dans le couloir entre deux rangs.
+    // nodesep serré : moins de hauteur à avaler, donc un zoom d'arrivée plus lisible.
+    : { rankdir, nodesep: 44, ranksep: 96, marginx: 16, marginy: 16 });
   graph.setDefaultEdgeLabel(() => ({}));
 
   const known = new Set(entities.map((entity) => entity.id));
@@ -103,30 +104,79 @@ export function layoutPresetNodes(
   });
 }
 
+/** Hauteur minimale entre deux libellés voisins avant qu'ils ne se recouvrent. */
+const LABEL_MIN_GAP = 76;
+/** Deux libellés dont les milieux sont dans la même bande verticale se gênent. */
+const LABEL_COLUMN = 170;
+
+/**
+ * Décalage vertical de chaque libellé pour qu'aucun n'en recouvre un autre.
+ * Le libellé est posé au milieu de l'arête ; les milieux sont approchés par le
+ * segment centre à centre, donc les décalages suivent les cartes déplacées.
+ * Sans positions connues (tests, premier rendu), on n'étage que les flux qui
+ * partagent exactement le même tracé.
+ */
+export function labelOffsets(
+  flows: Array<FlowEdgeData | ViewFlow>,
+  centers?: Map<string, { x: number; y: number }>,
+): Map<string, number> {
+  const offsets = new Map<string, number>();
+  if (!centers) {
+    const seenPerPair = new Map<string, number>();
+    for (const flow of flows) {
+      const pair = `${flow.sourceId}→${flow.targetId}`;
+      const rank = seenPerPair.get(pair) ?? 0;
+      seenPerPair.set(pair, rank + 1);
+      offsets.set(flow.id, rank * LABEL_MIN_GAP);
+    }
+    return offsets;
+  }
+
+  const placed = flows.flatMap((flow) => {
+    const from = centers.get(flow.sourceId);
+    const to = centers.get(flow.targetId);
+    if (!from || !to) return [];
+    return [{ id: flow.id, x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }];
+  });
+
+  const columns = new Map<number, typeof placed>();
+  for (const label of placed) {
+    const column = Math.round(label.x / LABEL_COLUMN);
+    const bucket = columns.get(column);
+    if (bucket) bucket.push(label);
+    else columns.set(column, [label]);
+  }
+
+  for (const bucket of columns.values()) {
+    bucket.sort((a, b) => a.y - b.y);
+    let floor = -Infinity;
+    for (const label of bucket) {
+      const y = Math.max(label.y, floor);
+      offsets.set(label.id, y - label.y);
+      floor = y + LABEL_MIN_GAP;
+    }
+    // La pile pousse toujours vers le bas : on la recentre sur son milieu d'origine.
+    const shift = (offsets.get(bucket[bucket.length - 1]!.id) ?? 0) / 2;
+    for (const label of bucket) offsets.set(label.id, (offsets.get(label.id) ?? 0) - shift);
+  }
+  return offsets;
+}
+
 export function flowsToEdges(
   flows: Array<FlowEdgeData | ViewFlow>,
   onFlowSelect?: (flow: FlowEdgeData) => void,
   selectedFlowId?: string | null,
+  centers?: Map<string, { x: number; y: number }>,
 ): CanvasFlowEdge[] {
-  // Deux flux entre les mêmes entités suivent le même tracé : on étage leurs libellés.
-  const seenPerPair = new Map<string, number>();
-  // Les flux qui partent d'une même entité ont des milieux voisins : on alterne leur libellé à gauche / à droite.
-  const seenPerSource = new Map<string, number>();
-
-  return flows
-    .filter((flow) => !('hidden' in flow && flow.hidden))
+  const visible = flows.filter((flow) => !('hidden' in flow && flow.hidden));
+  const offsets = labelOffsets(visible, centers);
+  return visible
     .map((flow) => {
       const highlighted =
         'traceHighlight' in flow ? Boolean(flow.traceHighlight) : false;
       const isSelected = Boolean(selectedFlowId && flow.id === selectedFlowId);
       const payload = asFlowPayload(flow);
-      const pair = `${flow.sourceId}→${flow.targetId}`;
-      const rank = seenPerPair.get(pair) ?? 0;
-      seenPerPair.set(pair, rank + 1);
-      payload.labelOffset = rank * LABEL_STACK_GAP;
-      const fan = seenPerSource.get(flow.sourceId) ?? 0;
-      seenPerSource.set(flow.sourceId, fan + 1);
-      payload.labelShift = fan % 2 === 0 ? -LABEL_FAN_SHIFT : LABEL_FAN_SHIFT;
+      payload.labelOffset = offsets.get(flow.id) ?? 0;
       if (onFlowSelect) {
         payload.onSelect = onFlowSelect;
       }
@@ -173,6 +223,14 @@ export function mergeNodePositions(
   }));
 }
 
+/** Centre de chaque carte, d'après sa position courante et sa taille estimée. */
+function nodeCenters(placed: EntityFlowNode[]): Map<string, { x: number; y: number }> {
+  return new Map(placed.map((node) => [node.id, {
+    x: node.position.x + NODE_WIDTH / 2,
+    y: node.position.y + (NODE_HEIGHT[node.data.entityType] ?? DEFAULT_NODE_HEIGHT) / 2,
+  }]));
+}
+
 export type FlowCanvasProps = {
   scenario?: ScenarioState;
   /** Override entities (e.g. resolved metrics). Defaults to scenario.entities. */
@@ -198,6 +256,11 @@ export type FlowCanvasProps = {
    *  palette + schéma pour garder les briques à portée de main une fois en grand. */
   fullscreenTarget?: React.RefObject<HTMLElement | null>;
 };
+
+// Plancher de zoom au recadrage : en dessous, les montants des cartes ne se lisent
+// plus. Un grand schéma déborde alors du cadre — il se déplace à la molette, au
+// glissé, ou passe en plein écran.
+const FIT_VIEW = { padding: 0.02, minZoom: 0.75 } as const;
 
 /** Type MIME du glisser-déposer palette → canvas. */
 export const ENTITY_DRAG_TYPE = 'application/x-optimisator-entity';
@@ -256,8 +319,8 @@ function FlowCanvasInner({
 
   const initialNodes = useMemo(() => layoutPresetNodes(entities, scenario.flows, rankdir), [entities, scenario.flows, rankdir]);
   const initialEdges = useMemo(
-    () => [...flowsToEdges(flows, onFlowSelect, selectedFlowId), ...(showOwnership ? ownershipEdges(scenario.ownerships) : [])],
-    [flows, onFlowSelect, selectedFlowId, scenario.ownerships, showOwnership],
+    () => [...flowsToEdges(flows, onFlowSelect, selectedFlowId, nodeCenters(initialNodes)), ...(showOwnership ? ownershipEdges(scenario.ownerships) : [])],
+    [flows, onFlowSelect, selectedFlowId, scenario.ownerships, showOwnership, initialNodes],
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<EntityFlowNode>(initialNodes);
@@ -290,12 +353,17 @@ function FlowCanvasInner({
     setNodes((prev) => mergeNodePositions(layouted, prev).map((node) => ({
       ...node, position: (rankdir === 'LR' && scenario.nodePositions?.[node.id]) || node.position,
     })));
-    setEdges([...flowsToEdges(flows, onFlowSelect, selectedFlowId), ...(showOwnership ? ownershipEdges(scenario.ownerships) : [])]);
-  }, [entities, flows, scenario.flows, scenario.nodePositions, scenario.ownerships, showOwnership, onFlowSelect, selectedFlowId, setNodes, setEdges, rankdir]);
+  }, [entities, scenario.flows, scenario.nodePositions, setNodes, rankdir]);
+
+  // Les arêtes suivent les cartes : le calage des libellés se fait d'après leurs
+  // centres courants, donc il se refait aussi après un déplacement à la souris.
+  useEffect(() => {
+    setEdges([...flowsToEdges(flows, onFlowSelect, selectedFlowId, nodeCenters(nodes)), ...(showOwnership ? ownershipEdges(scenario.ownerships) : [])]);
+  }, [nodes, flows, scenario.ownerships, showOwnership, onFlowSelect, selectedFlowId, setEdges]);
 
   // Recadre au changement de scénario, une fois les nœuds mesurés : le fitView initial part de tailles estimées.
   useEffect(() => {
-    const id = requestAnimationFrame(() => void fitView({ padding: 0.08 }));
+    const id = requestAnimationFrame(() => void fitView(FIT_VIEW));
     return () => cancelAnimationFrame(id);
   }, [scenario.id, rankdir, fullscreen, fitView]);
 
@@ -334,7 +402,7 @@ function FlowCanvasInner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.08 }}
+        fitViewOptions={FIT_VIEW}
         minZoom={narrow ? 0.6 : 0.3}
         maxZoom={1.75}
         panOnScroll
