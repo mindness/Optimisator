@@ -33,14 +33,14 @@ export const TNS_ASSIETTE_ABATTEMENT: SourcedRate = {
 export const TNS_ABATTEMENT_FLOOR_EUR: SourcedRate = {
   value: Math.round(PASS_2026_EUR.value * 0.0176),
   unit: 'eur',
-  source: 'Décret n° 2025-708 du 25 juillet 2025 (plancher = 1,76 % du PASS) — non relu, valeur usuelle',
+  source: 'Décret n° 2025-708 du 25 juillet 2025, pris pour le III de CSS L. 136-3 (plancher). La loi borne le plancher au montant de L. 633-1 ; la valeur de 1,76 % du PASS reste à confirmer sur le texte du décret, non indexé par la recherche par code.',
   asOf: '2026-09-20',
   status: 'assumed',
 };
 export const TNS_ABATTEMENT_CEILING_EUR: SourcedRate = {
   value: Math.round(PASS_2026_EUR.value * 1.3),
   unit: 'eur',
-  source: 'Décret n° 2025-708 du 25 juillet 2025 (plafond = 130 % du PASS) — non relu, valeur usuelle',
+  source: 'Décret n° 2025-708 du 25 juillet 2025, pris pour le III de CSS L. 136-3 (plafond). La loi impose un plafond au moins égal au PASS ; 130 % le respecte, mais la valeur exacte reste à confirmer sur le texte du décret.',
   asOf: '2026-09-20',
   status: 'assumed',
 };
@@ -105,14 +105,14 @@ export const TNS_RETRAITE_BASE_DEPLAFONNEE: SourcedRate = {
 export const TNS_RCI_T1: SourcedRate = {
   value: 0.07,
   unit: 'ratio',
-  source: 'Règlement du RCI, taux fixé par arrêté (CSS art. L635-1 / D635-9) — non relu, valeur usuelle',
+  source: 'Règlement du régime complémentaire des indépendants — le taux est proposé par le conseil de la CNAV puis fixé par arrêté (CSS art. D635-9), il ne figure dans aucun code. Non vérifiable depuis Légifrance : à contrôler sur la table URSSAF « Taux de cotisations — artisan, commerçant » à chaque revue.',
   asOf: '2026-09-20',
   status: 'assumed',
 };
 export const TNS_RCI_T2: SourcedRate = {
   value: 0.08,
   unit: 'ratio',
-  source: 'Règlement du RCI, taux fixé par arrêté (CSS art. L635-1 / D635-9) — non relu, valeur usuelle',
+  source: 'Règlement du régime complémentaire des indépendants — le taux est proposé par le conseil de la CNAV puis fixé par arrêté (CSS art. D635-9), il ne figure dans aucun code. Non vérifiable depuis Légifrance : à contrôler sur la table URSSAF « Taux de cotisations — artisan, commerçant » à chaque revue.',
   asOf: '2026-09-20',
   status: 'assumed',
 };
@@ -122,7 +122,7 @@ export const TNS_RCI_CEILING_PASS = 4;
 export const TNS_INVALIDITE_DECES_RATE: SourcedRate = {
   value: 0.013,
   unit: 'ratio',
-  source: 'Taux fixé par arrêté (CSS art. L632-1) — non relu, valeur usuelle ; assiette : CSS art. D632-1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041966755',
+  source: 'Taux fixé par arrêté (CSS art. L632-1), hors codes — non vérifiable depuis Légifrance, à contrôler sur la table URSSAF à chaque revue. Assiette et plancher : CSS art. D632-1 — https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041966755',
   asOf: '2026-09-20',
   status: 'assumed',
 };
@@ -159,7 +159,7 @@ export const TNS_CSG_CRDS_RATE: SourcedRate = {
 export const TNS_FORMATION_RATE_OF_PASS: SourcedRate = {
   value: 0.0025,
   unit: 'ratio',
-  source: 'Code du travail art. L6331-48 (0,25 % du PASS commerçants) — non relu, valeur usuelle',
+  source: 'Code du travail art. L6331-48 (0,25 % du PASS pour les commerçants) — le montant est appelé forfaitairement par l’URSSAF, à contrôler sur sa table à chaque revue.',
   asOf: '2026-09-20',
   status: 'assumed',
 };
