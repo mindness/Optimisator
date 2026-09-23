@@ -11,8 +11,6 @@ import type { FlowLayer } from '@/core/types';
 import {
   buildViewFlows,
   computeMoneyTracePath,
-  filterFlowsByCategories,
-  filterFlowsByLayers,
   getResolvedScenario,
   resetSimulationStoreForTests,
   useSimulation,
@@ -26,38 +24,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   resetSimulationStoreForTests();
-});
-
-describe('filterFlowsByLayers', () => {
-  it('keeps only flows whose layer is active', () => {
-    const flows = FREELANCE_SASU_PRESET.flows;
-    const treasuryOnly = filterFlowsByLayers(flows, ['treasury']);
-    expect(treasuryOnly.every((f) => f.layer === 'treasury')).toBe(true);
-    expect(treasuryOnly.length).toBeGreaterThan(0);
-    expect(treasuryOnly.length).toBeLessThan(flows.length);
-
-    const social = filterFlowsByLayers(flows, ['social']);
-    expect(social.every((f) => f.layer === 'social')).toBe(true);
-
-    expect(filterFlowsByLayers(flows, [])).toEqual([]);
-  });
-});
-
-describe('filterFlowsByCategories / timeline', () => {
-  it('filters with categoriesVisibleThrough at early vs late steps', () => {
-    const flows = FREELANCE_SASU_PRESET.flows;
-    const early = filterFlowsByCategories(
-      flows,
-      categoriesVisibleThrough('facturation'),
-    );
-    expect(early.every((f) => f.category === 'revenue')).toBe(true);
-
-    const late = filterFlowsByCategories(
-      flows,
-      categoriesVisibleThrough('dividendes'),
-    );
-    expect(late.length).toBe(flows.length);
-  });
 });
 
 describe('Money Tracer path', () => {

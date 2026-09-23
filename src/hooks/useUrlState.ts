@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 import {
   compressToEncodedURIComponent,
   decompressFromEncodedURIComponent,
@@ -26,97 +25,6 @@ export function decodeUrlState<T = unknown>(encoded: string): T | null {
   } catch {
     return null;
   }
-}
-
-function readHashParam(key: string): string | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.location.hash.replace(/^#/, '');
-  if (!raw) return null;
-
-  // Avoid URLSearchParams — it turns `+` into spaces and breaks lz-string.
-  if (raw.includes('=')) {
-    const eq = raw.indexOf('=');
-    const k = raw.slice(0, eq);
-    if (k === key) return raw.slice(eq + 1);
-    // Multi-param fallback: split on & without decoding + as space.
-    for (const part of raw.split('&')) {
-      const i = part.indexOf('=');
-      if (i >= 0 && part.slice(0, i) === key) return part.slice(i + 1);
-    }
-    return null;
-  }
-  if (key === DEFAULT_HASH_KEY) return raw;
-  return null;
-}
-
-function writeHashParam(key: string, encoded: string | null) {
-  if (typeof window === 'undefined') return;
-  if (!encoded) {
-    const url = new URL(window.location.href);
-    url.hash = '';
-    window.history.replaceState(null, '', url.toString());
-    return;
-  }
-  const params = new URLSearchParams();
-  params.set(key, encoded);
-  const url = new URL(window.location.href);
-  url.hash = params.toString();
-  window.history.replaceState(null, '', url.toString());
-}
-
-function readHashState<T>(key: string): T | null {
-  const encoded = readHashParam(key);
-  if (!encoded) return null;
-  return decodeUrlState<T>(encoded);
-}
-
-export type UseUrlStateOptions<T> = {
-  /** Hash query key (default `s`). */
-  key?: string;
-  /** Called once when a hash payload is present on mount. */
-  onHydrate?: (value: T) => void;
-};
-
-/**
- * Sync serializable state with the URL hash via lz-string (offline share fallback).
- */
-export function useUrlState<T>(
-  initial: T,
-  options: UseUrlStateOptions<T> = {},
-): {
-  state: T;
-  setState: (next: T | ((prev: T) => T)) => void;
-  shareHash: string;
-  hydrateFromHash: () => T | null;
-} {
-  const key = options.key ?? DEFAULT_HASH_KEY;
-  // Le hash est lu au premier rendu : hydrater dans un effet afficherait d'abord
-  // l'état par défaut, puis le scénario partagé.
-  const [state, setStateInternal] = useState<T>(() => readHashState<T>(key) ?? initial);
-
-  const hydrateFromHash = useCallback((): T | null => readHashState<T>(key), [key]);
-
-  useEffect(() => {
-    const hydrated = hydrateFromHash();
-    if (hydrated !== null) options.onHydrate?.(hydrated);
-    // Notification unique au montage : `options` change d'identité à chaque rendu.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once
-  }, []);
-
-  const setState = useCallback(
-    (next: T | ((prev: T) => T)) => {
-      setStateInternal((prev) => {
-        const value = typeof next === 'function' ? (next as (p: T) => T)(prev) : next;
-        writeHashParam(key, encodeUrlState(value));
-        return value;
-      });
-    },
-    [key],
-  );
-
-  const shareHash = `#${key}=${encodeUrlState(state)}`;
-
-  return { state, setState, shareHash, hydrateFromHash };
 }
 
 /** Build a full share URL with lz-string hash fallback (no API). */

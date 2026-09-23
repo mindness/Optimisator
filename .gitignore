@@ -41,8 +41,17 @@ Thumbs.db
 # AgentForge
 .agentforge/
 
-# Documentation
-**/*.md
+# Documentation : les notes d'agent à la racine restent hors dépôt, mais les
+# specs, plans et README du projet sont du contenu versionné.
+/*.md
+!/README.md
+!/CHANGELOG.md
+!/CLAUDE.md
+!/AGENTS.md
+!/AGENTFORGE.md
+!/CONSTRAINTS.md
+!/DESIGN.md
+!/PRODUCT.md
 .agentforge/runs/
 .agentforge/curate/
 

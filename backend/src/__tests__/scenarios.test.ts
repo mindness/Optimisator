@@ -47,7 +47,7 @@ describe('POST /api/scenarios', () => {
     });
 
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.slug).toMatch(/^[0-9a-z]{8}$/);
     expect(body.short_id).toBe(body.slug);
     expect(body.url).toBe(`/s/${body.slug}`);
@@ -61,7 +61,7 @@ describe('POST /api/scenarios', () => {
     });
 
     expect(res.status).toBe(422);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
@@ -89,12 +89,12 @@ describe('GET /api/scenarios/:slug', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: sampleScenario, isPublic: true }),
     });
-    const created = await createRes.json();
+    const created = await createRes.json() as any;
 
     const getRes = await app.request(`/api/scenarios/${created.slug}`);
     expect(getRes.status).toBe(200);
 
-    const loaded = await getRes.json();
+    const loaded = await getRes.json() as any;
     expect(loaded.short_id).toBe(created.short_id);
     expect(loaded.slug).toBe(created.slug);
     expect(loaded.data).toEqual(sampleScenario);
@@ -104,7 +104,7 @@ describe('GET /api/scenarios/:slug', () => {
   it('returns 404 for unknown slug', async () => {
     const res = await app.request('/api/scenarios/zzzzzzzz');
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error.code).toBe('NOT_FOUND');
   });
 });

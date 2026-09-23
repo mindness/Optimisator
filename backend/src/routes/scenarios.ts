@@ -37,10 +37,16 @@ export const MAX_BODY_BYTES = 256 * 1024;
 const SLUG_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 
 export function createSlug(length = 8): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  // 256 n'est pas un multiple de 36 : un `% 36` nu rendrait les 4 premiers
+  // caractères plus probables que les autres. On rejette la queue non divisible.
+  const limit = 256 - (256 % SLUG_ALPHABET.length);
   let out = '';
-  for (const b of bytes) {
-    out += SLUG_ALPHABET[b % SLUG_ALPHABET.length];
+  while (out.length < length) {
+    for (const b of crypto.getRandomValues(new Uint8Array(length))) {
+      if (b >= limit) continue;
+      out += SLUG_ALPHABET[b % SLUG_ALPHABET.length];
+      if (out.length === length) break;
+    }
   }
   return out;
 }
@@ -100,7 +106,9 @@ export function createScenariosRouter(getDb: () => ScenarioDb) {
         createdAt: stamp,
         updatedAt: stamp,
       })
-      .returning({ id: scenarios.id, slug: scenarios.slug });
+      // `.returning()` sans projection : la surcharge à un argument n'existe pas
+      // sur les deux pilotes (D1 et better-sqlite3) à la fois.
+      .returning();
 
     const row = inserted[0];
     if (!row) {

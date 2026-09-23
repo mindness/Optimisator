@@ -56,23 +56,6 @@ const EMPTY_WHAT_IF: WhatIfInputs = {};
 
 const DEFAULT_LAYERS: FlowLayer[] = [...FLOW_LAYERS];
 
-export function filterFlowsByLayers<T extends { layer: FlowLayer }>(
-  flows: T[],
-  activeLayers: readonly FlowLayer[],
-): T[] {
-  if (activeLayers.length === 0) return [];
-  const set = new Set(activeLayers);
-  return flows.filter((f) => set.has(f.layer));
-}
-
-export function filterFlowsByCategories<T extends { category: FlowCategory }>(
-  flows: T[],
-  visibleCategories: readonly FlowCategory[],
-): T[] {
-  const set = new Set(visibleCategories);
-  return flows.filter((f) => set.has(f.category));
-}
-
 /**
  * Walk outgoing edges in timeline order from the revenue sink (OpCo),
  * collecting a cash-path for Money Tracer highlighting.
