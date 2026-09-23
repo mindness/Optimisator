@@ -4,7 +4,7 @@ import type { FlowEdgeData } from '@/core/types';
 import { labelOffsets } from '../FlowCanvas';
 
 const flow = (id: string, sourceId: string, targetId: string): FlowEdgeData => ({
-  id, sourceId, targetId, category: 'revenue', label: id, amount: 1, periodicity: 'annual', layer: 'cash',
+  id, sourceId, targetId, category: 'revenue', label: id, amount: 1, periodicity: 'annual', layer: 'treasury',
 });
 
 describe('labelOffsets', () => {

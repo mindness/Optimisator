@@ -13,6 +13,20 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    build: {
+      rolldownOptions: {
+        output: {
+          // Les dépendances bougent moins souvent que l'app : isolées, elles
+          // restent en cache d'un déploiement à l'autre. Le schéma (xyflow +
+          // dagre) est séparé du socle React pour se télécharger en parallèle.
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return;
+            if (id.includes('@xyflow') || id.includes('dagre')) return 'vendor-flow';
+            if (id.includes('react-dom') || id.includes('/react/') || id.includes('scheduler')) return 'vendor-react';
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(rootDir, './src'),

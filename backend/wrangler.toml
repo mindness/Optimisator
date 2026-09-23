@@ -23,3 +23,14 @@ ALLOWED_ORIGINS = ""
 # Route de production (à adapter) : le Worker répond sur /api/* du même domaine que la SPA,
 # ce qui évite CORS et laisse VITE_API_URL vide.
 # routes = [{ pattern = "simulateur.example.com/api/*", zone_name = "example.com" }]
+
+# Quota d'écriture sur POST /api/scenarios, par IP appelante. Sans ce binding
+# (wrangler dev, tests), l'endpoint n'a aucune limite : ne pas le retirer en prod.
+# `period` ne peut valoir que 10 ou 60 secondes.
+[[ratelimits]]
+name = "WRITE_LIMIT"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60

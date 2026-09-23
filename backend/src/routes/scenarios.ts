@@ -65,10 +65,30 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-export function createScenariosRouter(getDb: () => ScenarioDb) {
+export type ScenariosRouterOptions = {
+  /**
+   * Autorise (ou non) une écriture pour une clé d'appelant. Absent = aucune
+   * limite : c'est le cas des tests et du `wrangler dev` sans binding.
+   */
+  rateLimit?: (key: string) => Promise<boolean>;
+};
+
+export function createScenariosRouter(
+  getDb: () => ScenarioDb,
+  options: ScenariosRouterOptions = {},
+) {
   const routes = new Hono();
 
   routes.post('/', async (c) => {
+    if (options.rateLimit) {
+      // Écriture ouverte : sans quota par appelant, n'importe qui peut remplir
+      // la base. L'IP Cloudflare est la seule identité disponible ici.
+      const caller = c.req.header('cf-connecting-ip') ?? 'unknown';
+      if (!(await options.rateLimit(caller))) {
+        return c.json(apiError('RATE_LIMITED', 'Too many scenarios created, retry in a minute'), 429);
+      }
+    }
+
     const declared = Number(c.req.header('content-length') ?? 0);
     if (declared > MAX_BODY_BYTES) {
       return c.json(apiError('PAYLOAD_TOO_LARGE', `Body exceeds ${MAX_BODY_BYTES} bytes`), 413);
@@ -146,7 +166,10 @@ export function createScenariosRouter(getDb: () => ScenarioDb) {
       .limit(1);
 
     const row = rows[0];
-    if (!row) {
+    // `isPublic: false` doit fermer le lien, sinon le champ promet une
+    // confidentialité qu'il n'applique pas. Même réponse qu'un slug inconnu :
+    // l'existence d'un scénario privé n'a pas à être confirmée.
+    if (!row || !row.isPublic) {
       return c.json(apiError('NOT_FOUND', `Scenario "${slug}" not found`), 404);
     }
 

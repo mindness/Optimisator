@@ -25,6 +25,8 @@ export type AppBindings = {
   DB: D1Database;
   /** Origines autorisées, séparées par des virgules ; vide = toutes (dev). */
   ALLOWED_ORIGINS?: string;
+  /** Quota d'écriture par IP (binding Cloudflare). Absent en local = pas de quota. */
+  WRITE_LIMIT?: RateLimit;
 };
 
 function applyCors(app: Hono<{ Bindings: AppBindings }>) {
@@ -39,16 +41,16 @@ function applyCors(app: Hono<{ Bindings: AppBindings }>) {
 }
 
 /** Vitest / local factory with an injected Drizzle database (better-sqlite3). */
-export function createApp(options: { db: ScenarioDb }) {
+export function createApp(options: { db: ScenarioDb; rateLimit?: (key: string) => Promise<boolean> }) {
   const app = new Hono<{ Bindings: AppBindings }>();
   applyCors(app);
   app.get('/health', (c) => c.json({ ok: true }));
-  app.route('/api/scenarios', createScenariosRouter(() => options.db));
+  app.route('/api/scenarios', createScenariosRouter(() => options.db, { ...(options.rateLimit ? { rateLimit: options.rateLimit } : {}) }));
   return app;
 }
 
-export function createTestApp(db: ScenarioDb) {
-  return createApp({ db });
+export function createTestApp(db: ScenarioDb, rateLimit?: (key: string) => Promise<boolean>) {
+  return createApp({ db, ...(rateLimit ? { rateLimit } : {}) });
 }
 
 async function handleScenarios(
@@ -61,7 +63,10 @@ async function handleScenarios(
     );
   }
   const db = drizzleD1(c.env.DB, { schema });
-  const router = createScenariosRouter(() => db);
+  const limiter = c.env.WRITE_LIMIT;
+  const router = createScenariosRouter(() => db, limiter
+    ? { rateLimit: async (key) => (await limiter.limit({ key })).success }
+    : {});
   const url = new URL(c.req.url);
   const stripped = url.pathname.replace(/^\/api\/scenarios/, '') || '/';
   const req = new Request(new URL(stripped + url.search, url.origin), c.req.raw);
