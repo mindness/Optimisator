@@ -35,7 +35,6 @@ import {
   calculateMotherDaughterDividend,
   calculatePersonalIncomeTax,
   findMaxGrossSalaryForTargetTMI,
-  calculateSciIrIncome,
   calculateTnsContributions,
   calculateTnsDividendSurcharge,
   tnsGrossForNet,
@@ -100,6 +99,7 @@ import {
   HOLDING_ASSET_TAX_RATE,
   MECENAT_CARRY_YEARS,
   PER_CARRY_YEARS,
+  PS_CAPITAL_DEROGATORY_RATE,
 } from './taxRules';
 import {
   TIMELINE_STEPS,
@@ -684,8 +684,15 @@ export function resolveScenarioGraph(
   const salaryNetImposableOf = (personId: string) => roundMoney([...books.values()]
     .reduce((sum, book) => sum + book.salary.netImposable * (sumOf('salary', 'sourceId', book.entity.id) > 0 ? sumOf('salary', 'sourceId', book.entity.id, (f) => f.targetId === personId ? amountOf(f) : 0) / sumOf('salary', 'sourceId', book.entity.id) : 0), 0));
   // SCI IR : prélèvements sociaux sur le revenu foncier, en plus du barème.
-  const sciIrLeviesOf = (personId: string) => roundMoney([...books.values()].filter((book) => book.entity.entityType === 'sci_ir')
-    .reduce((sum, book) => sum + calculateSciIrIncome(book.rentReceived, book.entity.inputs?.interestExpenses ?? 0, book.entity.inputs?.otherCharges ?? 0, 0).socialLevies * shareOf(personId, book.entity.id), 0));
+  // Même assiette que l'impôt sur le revenu — la CSG sur les revenus du
+  // patrimoine est « assise sur le montant net retenu pour l'établissement de
+  // l'impôt sur le revenu » (CSS L. 136-6, I). Recalculer les prélèvements sur
+  // les loyers bruts moins les charges saisies les décorrélerait de l'IR dès
+  // qu'un déficit antérieur, des intérêts reçus ou une cession entrent en jeu.
+  const sciIrLeviesOf = (personId: string) => roundMoney([...books.values()]
+    .filter((book) => book.entity.entityType === 'sci_ir')
+    .reduce((sum, book) => sum
+      + Math.max(0, book.taxableAfterDeficit) * PS_CAPITAL_DEROGATORY_RATE.value * shareOf(personId, book.entity.id), 0));
   const otherIncome = Math.max(0, inputs.otherIncome ?? 0);
   // Les revenus gagnés ailleurs entrent au barème du même foyer : ils décalent la TMI du schéma.
   const transparentIncome = roundMoney(transparentIncomeOf(primaryPerson?.id ?? '') + otherIncome);
