@@ -30,8 +30,10 @@ import { RATES_OLDEST_SOURCE, RATES_VERIFIED_ON, formatRatesDate } from '@/core/
  */
 export const LEGAL_IDENTITY = {
   mode: 'non_professionnel' as 'non_professionnel' | 'professionnel',
-  host: '',
-  hostAddress: '',
+  // Vérifié le 23/09/2026 sur https://www.cloudflare.com/website-terms/ (§ 15).
+  // À reprendre chez le nouvel hébergeur en cas de changement.
+  host: 'Cloudflare, Inc.',
+  hostAddress: '101 Townsend St, San Francisco, CA 94107, États-Unis',
   /** Facultatif : une adresse de contact reste utile même sous le régime anonyme. */
   contactEmail: '',
   // Régime professionnel uniquement (art. 1-1, I).

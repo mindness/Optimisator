@@ -29,3 +29,12 @@ test('les informations légales sont accessibles depuis le pied de page', async 
   await expect(page.getByRole('heading', { name: 'Conditions générales d’utilisation' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Politique de confidentialité' })).toBeVisible();
 });
+
+test('les mentions légales identifient l’hébergeur, seule mention due', async ({ page }) => {
+  // Régime non professionnel (LCEN art. 1-1, II) : l'hébergeur est la seule
+  // identité à publier — mais elle, elle est obligatoire.
+  await page.goto('/legal');
+  const mentions = page.locator('#mentions');
+  await expect(mentions).toContainText('Cloudflare, Inc.');
+  await expect(mentions).not.toContainText('[à compléter]');
+});
