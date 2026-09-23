@@ -708,7 +708,19 @@ export function resolveScenarioGraph(
   const transparentAfterPer = roundMoney(Math.max(0, transparentIncome - per.deducted));
   const salaryAfterPer = roundMoney(Math.max(0, salaryNetImposable - Math.max(0, per.deducted - transparentIncome)));
   const salaryIncomeTax = calculatePersonalIncomeTax(salaryAfterPer, parts, { situation, otherTaxableIncome: transparentAfterPer });
-  const dividendArbitrage = compareDividendTaxModes(personalDividendGross, salaryIncomeTax.marginalRate);
+  // Coût réel du barème pour ce foyer : l'impôt avec les dividendes dans
+  // l'assiette, moins l'impôt sans. `salaryIncomeTax` est exactement ce second
+  // terme. Comparer à TMI constante ignorait le franchissement de tranche et
+  // pouvait désigner le barème alors que le PFU coûte moins cher.
+  const irCostOfBaremeBase = (taxableBase: number) => roundMoney(
+    calculatePersonalIncomeTax(salaryAfterPer, parts, {
+      situation,
+      otherTaxableIncome: roundMoney(transparentAfterPer + taxableBase),
+    }).taxDue - salaryIncomeTax.taxDue,
+  );
+  const dividendArbitrage = compareDividendTaxModes(
+    personalDividendGross, salaryIncomeTax.marginalRate, irCostOfBaremeBase,
+  );
   const requestedMode = inputs.dividendTaxMode ?? 'auto';
   const dividendTaxMode: DividendTaxMode = requestedMode === 'auto' ? dividendArbitrage.best.mode : requestedMode;
   const personalIncomeTax = dividendTaxMode === 'bareme'
@@ -723,6 +735,16 @@ export function resolveScenarioGraph(
   // ---- Flux résolus -----------------------------------------------------------
   const calculations: TaxCalculationResult[] = [];
   const resolvedFlows: ResolvedFlow[] = [];
+  /**
+   * Part « impôt sur le revenu » seule des flux imposés chez la personne.
+   * La CDHR ne défalque que l'IR, la CEHR et les prélèvements libératoires
+   * (CGI art. 224, III-2°) : y inclure les prélèvements sociaux l'annulerait
+   * à tort. On la suit donc à part du total payé sur le flux.
+   */
+  const personIncomeTaxOnFlows = new Map<string, number>();
+  const addPersonIncomeTax = (personId: string, amount: number) => {
+    personIncomeTaxOnFlows.set(personId, roundMoney((personIncomeTaxOnFlows.get(personId) ?? 0) + amount));
+  };
   const stepRank = new Map(timelineStepOrder().map((id, i) => [id, i]));
   const sortedFlows = [...scenario.flows].sort((a, b) => {
     const ra = stepRank.get(timelineStepIdForCategory(a.category)) ?? 0;
@@ -818,7 +840,8 @@ export function resolveScenarioGraph(
             breakdown: [line(`QPFC ${rate * 100} %`, mereFille.qpfc, `dividend × ${rate}`), line('IS de la mère sur la QPFC', mereFille.holdingTax, 'QPFC × taux effectif IS de la mère')],
           });
         } else if (target.entityType === 'person') {
-          const personal = calculateDividendTax(resolvedAmount, dividendTaxMode, salaryIncomeTax.marginalRate);
+          const personal = calculateDividendTax(resolvedAmount, dividendTaxMode, salaryIncomeTax.marginalRate, irCostOfBaremeBase);
+          addPersonIncomeTax(target.id, personal.irPart);
           const breakdown = [...personal.breakdown];
           let extra = 0;
           // Gérant majoritaire TNS : dividendes > 10 % (capital + CCA) cotisent (CSS L131-6).
@@ -875,6 +898,7 @@ export function resolveScenarioGraph(
             acquisitionYear: flow.share?.acquisitionYear,
             retirementAllowance: flow.share?.retirementAllowance,
           });
+          addPersonIncomeTax(source.id, sale.irPart);
           const acquired = flow.share?.acquisitionYear;
           flowTax = taxResult({
             flowId: flow.id, category: 'share_sale', grossAmount: resolvedAmount,
@@ -926,6 +950,9 @@ export function resolveScenarioGraph(
             deductedAmortization: property?.deductedAmortization,
           });
           propertyGains.set(flow.id, gain);
+          // La surtaxe de l'art. 1609 nonies G est une taxe distincte de l'IR :
+          // elle ne se défalque pas de la CDHR.
+          if (source?.entityType === 'person') addPersonIncomeTax(source.id, gain.incomeTax);
           flowTax = taxResult({
             flowId: flow.id, category: 'property_sale', grossAmount: resolvedAmount,
             taxAmount: gain.totalTax, netAmount: gain.netProceeds, breakdown: gain.breakdown,
@@ -1100,12 +1127,6 @@ export function resolveScenarioGraph(
     if (flow.category === 'property_sale') return sum + (propertyGains.get(flow.id)?.taxableIncomeTax ?? 0);
     return sum;
   }, 0));
-  const personFlowTaxOf = (personId: string) => roundMoney(resolvedFlows.reduce((sum, flow) => {
-    const taxed = flow.category === 'dividend' || flow.category === 'share_sale' || flow.category === 'property_sale';
-    if (!taxed) return sum;
-    const concerned = flow.category === 'dividend' ? flow.targetId === personId : flow.sourceId === personId;
-    return concerned ? sum + (flow.taxResult?.taxAmount ?? 0) : sum;
-  }, 0));
   /**
    * Revenu de référence reconstitué à partir de ce que le moteur connaît :
    * rémunération imposable, revenus transparents, dividendes bruts et
@@ -1118,7 +1139,10 @@ export function resolveScenarioGraph(
       .reduce((sum, flow) => sum + flow.resolvedAmount, 0));
     const income = roundMoney(salaryNetImposableOf(personId) + transparentIncomeOf(personId)
       + (personId === primaryPerson?.id ? otherIncome : 0) + dividends + personGainsOf(personId));
-    const paid = roundMoney(incomeTaxOf(personId) + sciIrLeviesOf(personId) + personFlowTaxOf(personId));
+    // CGI art. 224, III-2° : seuls l'impôt sur le revenu, la CEHR et les
+    // prélèvements libératoires viennent en diminution. Les prélèvements
+    // sociaux, eux, ne s'y défalquent pas — d'où la part IR suivie à part.
+    const paid = roundMoney(incomeTaxOf(personId) + (personIncomeTaxOnFlows.get(personId) ?? 0));
     return calculateCdhr(income, paid, { situation: personId === primaryPerson?.id ? situation : 'single', dependents: personId === primaryPerson?.id ? inputs.dependents : 0 });
   };
 
@@ -1198,7 +1222,7 @@ export function resolveScenarioGraph(
   if (personalDividendGross > 0) {
     warnings.push(dividendTaxMode === 'bareme'
       ? 'Dividendes imposés au barème (option globale CGI art. 200 A, 2) : l’option engage tous les revenus de capitaux mobiliers du foyer, non modélisés ici.'
-      : 'Dividendes imposés au PFU (CGI art. 200 A, 1) ; l’option barème est comparée à TMI constante, hors autres revenus de capitaux mobiliers.');
+      : 'Dividendes imposés au PFU (CGI art. 200 A, 1) ; l’option barème est chiffrée au coût réel pour ce foyer, mais hors autres revenus de capitaux mobiliers non saisis.');
   }
   if (tnsSurcharges.size > 0) warnings.push('Gérant majoritaire TNS : dividendes au-delà de 10 % du capital et du compte courant soumis aux cotisations SSI (CSS L131-6), déduits du net perçu.');
   warnings.push('Dividendes saisis sans validation du bénéfice distribuable, des réserves ni des conditions juridiques : une trésorerie positive ne vaut pas autorisation de distribution.');

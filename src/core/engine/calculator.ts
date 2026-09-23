@@ -537,10 +537,19 @@ export interface DividendTaxResult {
  * l'année : elle s'applique à tous les revenus de capitaux mobiliers du foyer,
  * ce que ce calcul isolé ne vérifie pas.
  */
+/**
+ * Coût réel en IR d'une base ajoutée au revenu du foyer. Passé par l'appelant
+ * qui connaît le foyer (parts, situation, autres revenus), il capte ce qu'un
+ * taux marginal constant ignore : le franchissement de tranche, la décote et
+ * le plafonnement du quotient familial.
+ */
+export type BaremeIrCost = (taxableBase: number) => number;
+
 export function calculateDividendTax(
   grossDividend: number,
   mode: DividendTaxMode,
   marginalRate: number = 0,
+  irCost?: BaremeIrCost,
 ): DividendTaxResult {
   const psPart = roundMoney(grossDividend * PFU_PS_RATE.value);
 
@@ -566,7 +575,10 @@ export function calculateDividendTax(
   const allowance = roundMoney(grossDividend * DIVIDEND_BAREME_ALLOWANCE.value);
   const csgDeductible = roundMoney(grossDividend * CSG_DEDUCTIBLE_POINTS.value);
   const taxableBase = roundMoney(Math.max(0, grossDividend - allowance - csgDeductible));
-  const irPart = roundMoney(taxableBase * marginalRate);
+  // Sans `irCost`, on reste sur le taux marginal constant : c'est une borne
+  // basse dès que la base traverse une tranche.
+  const irPart = irCost ? roundMoney(Math.max(0, irCost(taxableBase))) : roundMoney(taxableBase * marginalRate);
+  const effectiveRateOnBase = taxableBase > 0 ? irPart / taxableBase : 0;
   const totalTax = roundMoney(irPart + psPart);
 
   return {
@@ -582,9 +594,13 @@ export function calculateDividendTax(
       { label: 'Abattement 40 %', amount: -allowance, rate: DIVIDEND_BAREME_ALLOWANCE },
       { label: 'CSG déductible 6,8 pts', amount: -csgDeductible, rate: CSG_DEDUCTIBLE_POINTS },
       {
-        label: `IR au barème (TMI ${Math.round(marginalRate * 100)} %)`,
+        label: irCost
+          ? `IR au barème (coût réel ${(effectiveRateOnBase * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %)`
+          : `IR au barème (TMI ${Math.round(marginalRate * 100)} %)`,
         amount: irPart,
-        formula: `${taxableBase} € × ${Math.round(marginalRate * 100)} %`,
+        formula: irCost
+          ? `impôt du foyer avec ${taxableBase} € de dividendes en plus, moins l’impôt sans`
+          : `${taxableBase} € × ${Math.round(marginalRate * 100)} %`,
       },
       { label: 'Prélèvements sociaux', amount: psPart, rate: PFU_PS_RATE },
     ],
@@ -600,16 +616,21 @@ export interface DividendArbitrage {
 }
 
 /**
- * Compare PFU et option barème à TMI donnée et renvoie le moins coûteux.
- * En cas d'égalité stricte, le PFU l'emporte : il n'engage pas les autres
- * revenus de capitaux mobiliers du foyer.
+ * Compare PFU et option barème et renvoie le moins coûteux. En cas d'égalité
+ * stricte, le PFU l'emporte : il n'engage pas les autres revenus de capitaux
+ * mobiliers du foyer.
+ *
+ * Avec `irCost`, le barème est chiffré au coût réel pour le foyer ; sans lui,
+ * au taux marginal constant — ce qui sous-estime le barème quand les
+ * dividendes font franchir une tranche, et peut donc le désigner à tort.
  */
 export function compareDividendTaxModes(
   grossDividend: number,
   marginalRate: number,
+  irCost?: BaremeIrCost,
 ): DividendArbitrage {
   const pfu = calculateDividendTax(grossDividend, 'pfu');
-  const bareme = calculateDividendTax(grossDividend, 'bareme', marginalRate);
+  const bareme = calculateDividendTax(grossDividend, 'bareme', marginalRate, irCost);
   const best = bareme.totalTax < pfu.totalTax ? bareme : pfu;
   return {
     pfu,
