@@ -32,7 +32,7 @@ export const RATES_NEWEST_SOURCE = RATES_AS_OF_DATES[RATES_AS_OF_DATES.length - 
  *
  * À remonter à chaque revue (voir README « Revue annuelle des barèmes »).
  */
-export const RATES_VERIFIED_ON = '2026-09-22';
+export const RATES_VERIFIED_ON = '2026-09-23';
 
 export function formatRatesDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString('fr-FR');

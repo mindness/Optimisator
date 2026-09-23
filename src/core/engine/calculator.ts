@@ -21,6 +21,7 @@ import {
   MOTHER_DAUGHTER_QPFC_RATE,
   PFU_IR_RATE,
   PFU_PS_RATE,
+  PS_CAPITAL_DEROGATORY_RATE,
   QUOTIENT_FAMILIAL_CAP_PER_HALF_PART_EUR,
   SALARY_NON_DEDUCTIBLE_CSG_CRDS,
   TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE,
@@ -808,7 +809,9 @@ export function calculateSciIrIncome(
 ): SciIrResult {
   const taxableIncome = roundMoney(rentalIncomeHt - interestExpenses - otherCharges);
   const positiveIncome = Math.max(0, taxableIncome);
-  const socialLevies = roundMoney(positiveIncome * PFU_PS_RATE.value);
+  // Revenus fonciers : CSG à 9,2 % et non 10,6 % (CSS L. 136-8, IV-1°, qui vise
+  // le a du I de L. 136-6) — soit 17,2 % de prélèvements sociaux, pas 18,6 %.
+  const socialLevies = roundMoney(positiveIncome * PS_CAPITAL_DEROGATORY_RATE.value);
   const incomeTax = roundMoney(positiveIncome * marginalRate);
 
   return {
@@ -1580,7 +1583,9 @@ export function calculatePropertyGain(
   const taxableIncomeTax = exemptionReason ? 0 : roundMoney(grossGain * (1 - allowanceIncomeTax));
   const taxableSocialLevies = exemptionReason ? 0 : roundMoney(grossGain * (1 - allowanceSocialLevies));
   const incomeTax = roundMoney(taxableIncomeTax * PROPERTY_GAIN_IR_RATE.value);
-  const socialLevies = roundMoney(taxableSocialLevies * PFU_PS_RATE.value);
+  // Plus-values immobilières : CSG à 9,2 % (CSS L. 136-8, IV-2°, qui vise le 2°
+  // du I de L. 136-7, lequel renvoie aux articles 150 U à 150 UC du CGI).
+  const socialLevies = roundMoney(taxableSocialLevies * PS_CAPITAL_DEROGATORY_RATE.value);
   const surtax = exemptionReason ? 0 : propertySurtax(taxableIncomeTax);
   const totalTax = roundMoney(incomeTax + socialLevies + surtax);
 
@@ -1608,7 +1613,7 @@ export function calculatePropertyGain(
           { label: 'Plus-value brute', amount: grossGain },
           { label: `Abattement pour durée de détention, IR (${Math.round(allowanceIncomeTax * 100)} %)`, amount: -roundMoney(grossGain * allowanceIncomeTax), rate: PROPERTY_ALLOWANCE_IR_PER_YEAR },
           { label: 'Impôt sur le revenu 19 %', amount: incomeTax, rate: PROPERTY_GAIN_IR_RATE },
-          { label: `Prélèvements sociaux (abattement ${Math.round(allowanceSocialLevies * 100)} %)`, amount: socialLevies, rate: PFU_PS_RATE },
+          { label: `Prélèvements sociaux (abattement ${Math.round(allowanceSocialLevies * 100)} %)`, amount: socialLevies, rate: PS_CAPITAL_DEROGATORY_RATE },
           ...(surtax ? [{ label: 'Surtaxe sur les plus-values élevées', amount: surtax, formula: 'CGI art. 1609 nonies G' }] : []),
         ],
   };

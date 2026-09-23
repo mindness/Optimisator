@@ -169,6 +169,26 @@ export const PFU_PS_RATE: SourcedRate = {
   status: 'verified',
 };
 
+/**
+ * Prélèvements sociaux au taux dérogatoire, pour les revenus que le CSS sort
+ * expressément du taux de 10,6 % :
+ * CSG 9,2 % (CSS L. 136-8 IV-1° pour les revenus fonciers — a du I de L. 136-6 —
+ * et IV-2° pour les plus-values immobilières — 2° du I de L. 136-7, qui renvoie
+ * aux articles 150 U à 150 UC du CGI)
+ * + solidarité 7,5 % (CGI 235 ter) + CRDS 0,5 % (ord. n° 96-50 art. 19) = 17,2 %.
+ *
+ * Les dividendes (L. 136-7 I-1°) et les plus-values de cession de titres
+ * (L. 136-6 I-e) ne figurent pas dans ces dérogations : ils restent à 18,6 %.
+ */
+export const PS_CAPITAL_DEROGATORY_RATE: SourcedRate = {
+  value: 0.172,
+  unit: 'ratio',
+  source:
+    'CSS L. 136-8 IV-1° et IV-2° (CSG 9,2 %) https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054336623 + CSS L. 136-7 I-2° https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053584839 + CSS L. 136-6 I-a https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051218166 + CGI 235 ter (solidarité 7,5 %) + ord. n° 96-50 art. 19 (CRDS 0,5 %)',
+  asOf: '2026-09-23',
+  status: 'verified',
+};
+
 /** Derived PFU total = verified IR 12.8% + verified PS 18.6% = 31.4%. */
 export const PFU_TOTAL_RATE: SourcedRate = {
   value: 0.314,

@@ -24,7 +24,7 @@ import {
   HOLDING_ASSET_TAX_RATE,
   MECENAT_CAP_FLOOR_EUR,
   PROPERTY_GAIN_IR_RATE,
-  PFU_PS_RATE,
+  PS_CAPITAL_DEROGATORY_RATE,
 } from '../taxRules';
 import { PASS_2026_EUR } from '../tnsRules';
 
@@ -371,7 +371,7 @@ describe('Plus-value immobilière des particuliers', () => {
     const gain = calculatePropertyGain(400_000, 200_000, { holdingYears: 10, worksAmount: 0 });
 
     expect(gain.incomeTax).toBeCloseTo(gain.taxableIncomeTax * PROPERTY_GAIN_IR_RATE.value, 2);
-    expect(gain.socialLevies).toBeCloseTo(gain.taxableSocialLevies * PFU_PS_RATE.value, 1);
+    expect(gain.socialLevies).toBeCloseTo(gain.taxableSocialLevies * PS_CAPITAL_DEROGATORY_RATE.value, 1);
     // Les PS s'abattent moins vite que l'IR : leur base est plus large.
     expect(gain.taxableSocialLevies).toBeGreaterThan(gain.taxableIncomeTax);
   });

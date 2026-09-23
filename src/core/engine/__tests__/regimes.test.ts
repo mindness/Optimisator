@@ -19,6 +19,7 @@ import {
   IR_2026_BRACKETS,
   MICRO_BRACKETS_2026,
   PFU_PS_RATE,
+  PS_CAPITAL_DEROGATORY_RATE,
   PFU_TOTAL_RATE,
   QUOTIENT_FAMILIAL_CAP_PER_HALF_PART_EUR,
   TNS_DIVIDEND_EXEMPT_CAPITAL_SHARE,
@@ -265,7 +266,7 @@ describe('calculateSciIrIncome', () => {
     const result = calculateSciIrIncome(36_000, 8_000, 3_000, 0.3);
     expect(result.taxableIncome).toBe(25_000);
     expect(result.incomeTax).toBe(roundMoney(25_000 * 0.3));
-    expect(result.socialLevies).toBe(roundMoney(25_000 * PFU_PS_RATE.value));
+    expect(result.socialLevies).toBe(roundMoney(25_000 * PS_CAPITAL_DEROGATORY_RATE.value));
     expect(result.cashFlowNet).toBe(
       roundMoney(25_000 - result.incomeTax - result.socialLevies),
     );
@@ -349,8 +350,9 @@ describe('per-entity resolution', () => {
     expect(sci.metrics.corporateTax).toBe(0);
     expect(sci.metrics.treasury).toBe(7_000);
     const person = result.entities.find((e) => e.id === 'p')!;
-    // PS 18,6 % sur 7 000 = 1 302, plus l'IR au barème sur ce revenu foncier (nul sous le seuil, 1 part).
-    expect(person.metrics.personalIncomeTax).toBe(1_302 + result.summary.personalIncomeTax.taxDue);
+    // PS 17,2 % sur 7 000 = 1 204 (revenus fonciers : CSG 9,2 %, CSS L. 136-8 IV-1°),
+    // plus l'IR au barème sur ce revenu foncier (nul sous le seuil, 1 part).
+    expect(person.metrics.personalIncomeTax).toBe(1_204 + result.summary.personalIncomeTax.taxDue);
     expect(result.summary.sciTaxDue).toBe(0);
   });
 
