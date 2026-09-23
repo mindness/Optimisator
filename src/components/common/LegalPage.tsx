@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { DisclaimerBanner } from './DisclaimerBanner';
-import { RATES_LAST_VERIFIED, formatRatesDate } from '@/core/legal/ratesFreshness';
+import { RATES_OLDEST_SOURCE, RATES_VERIFIED_ON, formatRatesDate } from '@/core/legal/ratesFreshness';
 
 /**
  * Identité de l'éditeur (LCEN art. 6 III). À compléter avant toute mise en ligne :
@@ -67,7 +67,7 @@ export function LegalPage() {
           <p className="m-0">
             <strong className="text-fg">Barèmes.</strong> Les taux et seuils proviennent de sources publiques (Légifrance,
             BOFiP, URSSAF) citées dans l’outil, chacun avec sa date de vérification et son statut (« vérifié » ou
-            « hypothèse »). Dernière vérification : {formatRatesDate(RATES_LAST_VERIFIED)}. La législation évolue ; aucune
+            « hypothèse »). Dernière revue d’ensemble : {formatRatesDate(RATES_VERIFIED_ON)} ; la source légale la plus ancienne encore utilisée date du {formatRatesDate(RATES_OLDEST_SOURCE)}. La législation évolue ; aucune
             garantie d’exactitude, d’exhaustivité ou d’actualité n’est donnée.
           </p>
           <p className="m-0">

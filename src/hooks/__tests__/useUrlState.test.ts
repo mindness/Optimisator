@@ -92,3 +92,27 @@ describe('parseSharePayload', () => {
     expect(parsed?.scenario.id).toBe(FREELANCE_SASU_PRESET.id);
   });
 });
+
+describe('parseSharePayload — frontière de confiance', () => {
+  const scenario = FREELANCE_SASU_PRESET;
+
+  it('nettoie les hypothèses d’un lien sans rejeter le scénario', () => {
+    const payload = parseSharePayload({
+      scenario,
+      whatIf: { caHt: 'abc', expensesHt: 24_000, situation: 'divorcé' },
+    });
+    expect(payload?.scenario.id).toBe(scenario.id);
+    expect(payload?.whatIf).toEqual({ expensesHt: 24_000 });
+  });
+
+  it('écarte les calques inconnus', () => {
+    const payload = parseSharePayload({ scenario, activeLayers: ['treasury', 'inconnu', 42] });
+    expect(payload?.activeLayers).toEqual(['treasury']);
+  });
+
+  it('retombe sur les valeurs du schéma quand rien n’est exploitable', () => {
+    // `{}` = aucune hypothèse forcée : le scénario reprend ses propres montants.
+    const payload = parseSharePayload({ scenario, whatIf: { caHt: 'abc' } });
+    expect(payload?.whatIf).toEqual({});
+  });
+});

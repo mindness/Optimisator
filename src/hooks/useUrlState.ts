@@ -3,8 +3,8 @@ import {
   decompressFromEncodedURIComponent,
 } from 'lz-string';
 
-import { parseScenarioState, type ScenarioState } from '@/core/types';
-import type { WhatIfInputs } from '@/core/engine';
+import { FLOW_LAYERS, parseScenarioState, type ScenarioState } from '@/core/types';
+import { parseWhatIfInputs } from '@/core/engine';
 import type { FlowLayer } from '@/core/types';
 import type { SharePayload } from '@/hooks/useSimulation';
 
@@ -120,8 +120,13 @@ export function parseSharePayload(data: unknown): SharePayload | null {
 
   // API may store either SharePayload or bare ScenarioState under `data`.
   let scenarioRaw = record.scenario;
-  const whatIf = record.whatIf as WhatIfInputs | undefined;
-  const activeLayers = record.activeLayers as FlowLayer[] | undefined;
+  // Ni les hypothèses ni les calques ne viennent de nous : un lien, un fichier
+  // ou un brouillon ancien peuvent porter n'importe quoi. Non validées, elles
+  // traversent le moteur et ressortent en NaN sur toute la synthèse.
+  const whatIf = parseWhatIfInputs(record.whatIf) ?? undefined;
+  const activeLayers = Array.isArray(record.activeLayers)
+    ? record.activeLayers.filter((layer): layer is FlowLayer => FLOW_LAYERS.includes(layer as FlowLayer))
+    : undefined;
 
   if (!scenarioRaw && 'id' in record && 'entities' in record) {
     scenarioRaw = data;
@@ -133,8 +138,8 @@ export function parseSharePayload(data: unknown): SharePayload | null {
     const scenario: ScenarioState = parseScenarioState(scenarioRaw);
     return {
       scenario,
-      ...(whatIf && typeof whatIf === 'object' ? { whatIf } : {}),
-      ...(Array.isArray(activeLayers) ? { activeLayers } : {}),
+      ...(whatIf ? { whatIf } : {}),
+      ...(activeLayers?.length ? { activeLayers } : {}),
     };
   } catch {
     return null;

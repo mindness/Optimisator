@@ -200,6 +200,8 @@ export {
   type WhatIfInputs,
 } from './graphResolver';
 
+export { parseWhatIfInputs, whatIfInputsSchema } from './whatIfSchema';
+
 export {
   FORECAST_BLIND_SPOTS,
   forecastScenario,

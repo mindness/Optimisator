@@ -79,10 +79,12 @@ Puis côté SPA : `VITE_API_URL=https://simulateur-flux-api.<compte>.workers.dev
 `ALLOWED_ORIGINS = "https://votre-domaine"` dans `wrangler.toml` (`[vars]`). Si le Worker est
 routé sur `/api/*` du même domaine que la SPA, laissez `VITE_API_URL=` vide (même origine).
 
-Garde-fous en place : forme de scénario validée (Zod), corps ≤ 256 ko, CORS restreint. **Le
-rate limiting se règle dans Cloudflare** (Security → WAF → Rate limiting rules, ex. 10 POST /
-minute / IP sur `/api/scenarios`) — pas dans le code. Les scénarios stockés sont publics par
-construction : ne pas y mettre de données nominatives.
+Garde-fous en place : forme de scénario validée (Zod), corps ≤ 256 ko, CORS restreint, et un
+quota d'écriture de 10 POST / minute / IP via le binding `[[ratelimits]]` `WRITE_LIMIT` de
+`wrangler.toml` (compteur local à chaque datacentre, donc permissif — voir
+[backend/README.md](backend/README.md)). Un scénario créé avec `isPublic: false` répond 404 en
+lecture ; tous les autres sont lisibles par quiconque a le lien : ne pas y mettre de données
+nominatives.
 
 ### Mise en ligne : sécurité, légal, mesure
 
@@ -99,10 +101,15 @@ construction : ne pas y mettre de données nominatives.
 
 ## Revue annuelle des barèmes
 
-Chaque taux porte `source`, `asOf` et `status`. Le pied de page affiche la dernière vérification, et
-`ratesFreshness.test.ts` **casse la CI dès qu'un barème n'a pas été revu depuis 400 jours**. À chaque loi de
-finances / LFSS (fin décembre) : relire chaque source Légifrance / BOFiP / URSSAF de `taxRules.ts` et
-`tnsRules.ts`, corriger la valeur si besoin, mettre `asOf` à la date de relecture, consigner dans `CHANGELOG.md`.
+Chaque taux porte `source`, `asOf` et `status`. **`asOf` date la source légale**, pas le contrôle : l'arrêté
+PASS 2026 est du 22/12/2025 et reste à jour. La date affichée à l'utilisateur est donc une constante à part,
+`RATES_VERIFIED_ON` dans `ratesFreshness.ts` — la seule qui réponde à « quand a-t-on vérifié que tout cela
+tient encore ? ». `ratesFreshness.test.ts` **casse la CI** dès qu'un barème ou la revue d'ensemble dépasse
+400 jours, et si la revue prétend couvrir une source plus récente qu'elle.
+
+À chaque loi de finances / LFSS (fin décembre) : relire chaque source Légifrance / BOFiP / URSSAF de
+`taxRules.ts` et `tnsRules.ts`, corriger la valeur et son `asOf` si la source a changé, **remonter
+`RATES_VERIFIED_ON` à la date de la revue dans tous les cas**, consigner dans `CHANGELOG.md`.
 
 ## Tests
 
