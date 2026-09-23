@@ -257,10 +257,11 @@ export type FlowCanvasProps = {
   fullscreenTarget?: React.RefObject<HTMLElement | null>;
 };
 
-// Plancher de zoom au recadrage : en dessous, les montants des cartes ne se lisent
-// plus. Un grand schéma déborde alors du cadre — il se déplace à la molette, au
-// glissé, ou passe en plein écran.
-const FIT_VIEW = { padding: 0.02, minZoom: 0.75 } as const;
+// Pas de plancher de zoom : sur le plus gros montage, il coupait les cartes des
+// bords au chargement. Un schéma tronqué se comprend moins bien qu'un schéma
+// petit mais entier — le détail se lit à la molette ou en plein écran. La
+// lisibilité vient du placement resserré des rangs, pas d'un zoom forcé.
+const FIT_VIEW = { padding: 0.02 } as const;
 
 /** Type MIME du glisser-déposer palette → canvas. */
 export const ENTITY_DRAG_TYPE = 'application/x-optimisator-entity';
